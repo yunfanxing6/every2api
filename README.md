@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Base](https://img.shields.io/badge/Base-Sub2API%20v0.1.108-1f6feb.svg)](https://github.com/Wei-Shaw/sub2api)
+[![Base](https://img.shields.io/badge/Base-Sub2API%20v0.1.109-1f6feb.svg)](https://github.com/Wei-Shaw/sub2api)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8.svg)](https://golang.org/)
 [![Vue](https://img.shields.io/badge/Vue-3-42b883.svg)](https://vuejs.org/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg)](https://www.docker.com/)
@@ -11,7 +11,7 @@
 
 [中文说明](README_GROK_FORK_CN.md)
 
-[Release Notes](RELEASE_NOTES_v0.1.108-grok.1.md)
+[Release Notes](RELEASE_NOTES_v0.1.109-grok.1.md)
 
 </div>
 
@@ -162,7 +162,7 @@ What it does:
 
 This local workspace was prepared from:
 
-- upstream base: `Sub2API v0.1.108`
+- upstream base: `Sub2API v0.1.109`
 
 Local working directory:
 
