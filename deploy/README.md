@@ -1,4 +1,4 @@
-# Sub2API Deployment Files
+# Sub2API Grok Fork Deployment Files
 
 This directory contains files for deploying Sub2API on Linux servers.
 
@@ -16,6 +16,7 @@ This directory contains files for deploying Sub2API on Linux servers.
 | `docker-compose.yml` | Docker Compose configuration (named volumes) |
 | `docker-compose.local.yml` | Docker Compose configuration (local directories, easy migration) |
 | `docker-deploy.sh` | **One-click Docker deployment script (recommended)** |
+| `upgrade-to-grok-fork.sh` | **One-click migration from stock Sub2API to this Grok fork** |
 | `.env.example` | Docker environment variables template |
 | `DOCKER.md` | Docker Hub documentation |
 | `install.sh` | One-click binary installation script |
@@ -35,10 +36,10 @@ Use the automated preparation script for the easiest setup:
 
 ```bash
 # Download and run the preparation script
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/docker-deploy.sh | bash
 
 # Or download first, then run
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-deploy.sh -o docker-deploy.sh
+curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/docker-deploy.sh -o docker-deploy.sh
 chmod +x docker-deploy.sh
 ./docker-deploy.sh
 ```
@@ -71,8 +72,8 @@ If you prefer manual control:
 
 ```bash
 # Clone repository
-git clone https://github.com/Wei-Shaw/sub2api.git
-cd sub2api/deploy
+git clone https://github.com/yunfanxing6/sub2api-grok.git
+cd sub2api-grok/deploy
 
 # Configure environment
 cp .env.example .env
@@ -95,6 +96,28 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 
 # Access Web UI
 # http://localhost:8080
+```
+
+### Upgrade From Stock Sub2API To This Fork
+
+If you already run the official `Sub2API` Docker deployment and want to switch to this Grok fork, use:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/upgrade-to-grok-fork.sh | bash
+```
+
+This script will:
+
+- back up your current deployment files
+- keep your `.env` and data directories
+- clone `yunfanxing6/sub2api-grok`
+- generate `docker-compose.grok.yml`
+- build the fork locally and start it
+
+After migration, use:
+
+```bash
+docker compose -f docker-compose.grok.yml logs -f sub2api
 ```
 
 ### Deployment Version Comparison
@@ -353,12 +376,12 @@ For production servers using systemd.
 ### One-Line Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/install.sh | sudo bash
 ```
 
 ### Manual Installation
 
-1. Download the latest release from [GitHub Releases](https://github.com/Wei-Shaw/sub2api/releases)
+1. Download the latest release from [GitHub Releases](https://github.com/yunfanxing6/sub2api-grok/releases)
 2. Extract and copy the binary to `/opt/sub2api/`
 3. Copy `sub2api.service` to `/etc/systemd/system/`
 4. Run:

@@ -11,6 +11,8 @@
 
 [中文说明](README_GROK_FORK_CN.md)
 
+[Release Notes](RELEASE_NOTES_v0.1.108-grok.1.md)
+
 </div>
 
 ## What This Fork Adds
@@ -125,6 +127,36 @@ Reason:
 - this is not stock upstream `Sub2API`
 - it contains custom Grok platform and gateway changes
 - upgrading through the stock updater can overwrite fork-specific behavior
+
+## Upgrade Paths
+
+### Existing users of this fork
+
+This fork's update checker now defaults to:
+
+- `yunfanxing6/sub2api-grok`
+
+You can override it with:
+
+- `SUB2API_RELEASE_REPO=owner/repo`
+
+### Existing users of stock Sub2API
+
+Use the migration script in `deploy/upgrade-to-grok-fork.sh`.
+
+Typical usage:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/upgrade-to-grok-fork.sh | bash
+```
+
+What it does:
+
+- backs up your current deployment files
+- clones this fork beside your deployment
+- preserves `.env`, `data`, `postgres_data`, `redis_data`
+- generates a `docker-compose.grok.yml` that builds this fork from source
+- sets `SUB2API_RELEASE_REPO=yunfanxing6/sub2api-grok`
 
 ## Workspace
 

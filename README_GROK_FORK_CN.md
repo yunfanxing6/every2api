@@ -79,6 +79,34 @@
 4. 明确标注当前已知限制：`images/edits`
 5. 单独维护升级策略：以后以官方 `sub2api` tag 为基线继续前移
 
+## 升级方式
+
+### 已经在用这个 fork 的用户
+
+这个 fork 的在线更新默认检查：
+
+- `yunfanxing6/sub2api-grok`
+
+如果你以后换了自己的仓库名，可以通过环境变量覆盖：
+
+- `SUB2API_RELEASE_REPO=owner/repo`
+
+### 还在使用原版 Sub2API 的用户
+
+可以使用一键迁移脚本：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/upgrade-to-grok-fork.sh | bash
+```
+
+这个脚本会：
+
+- 备份当前部署文件
+- 保留 `.env` 和数据目录
+- 克隆本 fork 到本地
+- 生成 `docker-compose.grok.yml`
+- 本地构建并启动 Grok 融合版
+
 ## 当前线上实例
 
 - 站点：`https://sub.openaiapi.icu`
