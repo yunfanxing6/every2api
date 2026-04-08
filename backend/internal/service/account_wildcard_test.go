@@ -326,7 +326,7 @@ func TestAccountGetModelMapping_UsesDefaultGrokMapping(t *testing.T) {
 	if mapping["grok-4.20-beta"] != "grok-4.20-beta" {
 		t.Fatalf("expected default grok text model mapping, got %#v", mapping)
 	}
-	if mapping["grok-imagine-1.0-fast"] != "grok-imagine-1.0" {
+	if mapping["grok-imagine-1.0-fast"] != "grok-imagine-1.0-fast" {
 		t.Fatalf("expected grok fast image alias to map upstream model, got %#v", mapping)
 	}
 }

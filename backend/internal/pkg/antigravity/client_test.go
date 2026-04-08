@@ -465,7 +465,9 @@ func TestShouldFallbackToNextURL_无错误且200(t *testing.T) {
 func TestClient_ExchangeCode_成功(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 验证请求方法
@@ -575,7 +577,9 @@ func TestClient_ExchangeCode_无ClientSecret(t *testing.T) {
 func TestClient_ExchangeCode_服务器返回错误(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -602,7 +606,9 @@ func TestClient_ExchangeCode_服务器返回错误(t *testing.T) {
 func TestClient_RefreshToken_MockServer(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -865,7 +871,9 @@ func newTestClientWithRedirect(redirects map[string]string) *Client {
 func TestClient_ExchangeCode_Success_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -936,7 +944,9 @@ func TestClient_ExchangeCode_Success_RealCall(t *testing.T) {
 func TestClient_ExchangeCode_ServerError_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -963,7 +973,9 @@ func TestClient_ExchangeCode_ServerError_RealCall(t *testing.T) {
 func TestClient_ExchangeCode_InvalidJSON_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -988,7 +1000,9 @@ func TestClient_ExchangeCode_InvalidJSON_RealCall(t *testing.T) {
 func TestClient_ExchangeCode_ContextCanceled_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second) // 模拟慢响应
@@ -1016,7 +1030,9 @@ func TestClient_ExchangeCode_ContextCanceled_RealCall(t *testing.T) {
 func TestClient_RefreshToken_Success_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -1067,7 +1083,9 @@ func TestClient_RefreshToken_Success_RealCall(t *testing.T) {
 func TestClient_RefreshToken_ServerError_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -1091,7 +1109,9 @@ func TestClient_RefreshToken_ServerError_RealCall(t *testing.T) {
 func TestClient_RefreshToken_InvalidJSON_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -1116,7 +1136,9 @@ func TestClient_RefreshToken_InvalidJSON_RealCall(t *testing.T) {
 func TestClient_RefreshToken_ContextCanceled_RealCall(t *testing.T) {
 	old := defaultClientSecret
 	defaultClientSecret = "test-secret"
-	t.Cleanup(func() { defaultClientSecret = old })
+	oldID := ClientID
+	ClientID = "test-client-id"
+	t.Cleanup(func() { defaultClientSecret = old; ClientID = oldID })
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(5 * time.Second)
