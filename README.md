@@ -153,10 +153,13 @@ curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy
 What it does:
 
 - backs up your current deployment files
+- detects your existing compose file automatically
+- stops the old stack before switching
 - clones this fork beside your deployment
 - preserves `.env`, `data`, `postgres_data`, `redis_data`
 - generates a `docker-compose.grok.yml` that builds this fork from source
 - sets `SUB2API_RELEASE_REPO=yunfanxing6/sub2api-grok`
+- writes a rollback script into the backup directory
 
 ## Workspace
 

@@ -102,10 +102,13 @@ curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy
 这个脚本会：
 
 - 备份当前部署文件
+- 自动识别现有 compose 文件
+- 先停止旧服务再切换
 - 保留 `.env` 和数据目录
 - 克隆本 fork 到本地
 - 生成 `docker-compose.grok.yml`
 - 本地构建并启动 Grok 融合版
+- 生成回滚脚本
 
 ## 当前线上实例
 

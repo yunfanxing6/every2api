@@ -109,10 +109,13 @@ curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy
 This script will:
 
 - back up your current deployment files
+- detect your current compose file automatically
+- stop the old stack before switching
 - keep your `.env` and data directories
 - clone `yunfanxing6/sub2api-grok`
 - generate `docker-compose.grok.yml`
 - build the fork locally and start it
+- create a rollback script inside the backup directory
 
 After migration, use:
 
