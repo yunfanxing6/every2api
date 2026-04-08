@@ -11,7 +11,7 @@
 
 [中文说明](README_GROK_FORK_CN.md)
 
-[Release Notes](RELEASE_NOTES_v0.1.109-grok.1.md)
+[Release Notes](RELEASE_NOTES_v0.1.109-grok.3.md)
 
 </div>
 

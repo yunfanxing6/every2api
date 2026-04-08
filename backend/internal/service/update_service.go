@@ -519,27 +519,73 @@ func (s *UpdateService) saveToCache(ctx context.Context, info *UpdateInfo) {
 
 // compareVersions compares two semantic versions
 func compareVersions(current, latest string) int {
-	currentParts := parseVersion(current)
-	latestParts := parseVersion(latest)
+	currentInfo := parseVersionInfo(current)
+	latestInfo := parseVersionInfo(latest)
 
 	for i := 0; i < 3; i++ {
-		if currentParts[i] < latestParts[i] {
+		if currentInfo.parts[i] < latestInfo.parts[i] {
 			return -1
 		}
-		if currentParts[i] > latestParts[i] {
+		if currentInfo.parts[i] > latestInfo.parts[i] {
 			return 1
 		}
+	}
+
+	if currentInfo.suffix == latestInfo.suffix {
+		if currentInfo.suffixSeq < latestInfo.suffixSeq {
+			return -1
+		}
+		if currentInfo.suffixSeq > latestInfo.suffixSeq {
+			return 1
+		}
+		return 0
+	}
+
+	if currentInfo.suffix == "" && latestInfo.suffix != "" {
+		return -1
+	}
+	if currentInfo.suffix != "" && latestInfo.suffix == "" {
+		return 1
+	}
+	if currentInfo.suffix < latestInfo.suffix {
+		return -1
+	}
+	if currentInfo.suffix > latestInfo.suffix {
+		return 1
 	}
 	return 0
 }
 
-func parseVersion(v string) [3]int {
+type parsedVersionInfo struct {
+	parts     [3]int
+	suffix    string
+	suffixSeq int
+}
+
+func parseVersionInfo(v string) parsedVersionInfo {
 	v = strings.TrimPrefix(v, "v")
-	parts := strings.Split(v, ".")
-	result := [3]int{0, 0, 0}
+	mainPart := v
+	suffix := ""
+	if idx := strings.Index(v, "-"); idx >= 0 {
+		mainPart = v[:idx]
+		suffix = v[idx+1:]
+	}
+	parts := strings.Split(mainPart, ".")
+	result := parsedVersionInfo{parts: [3]int{0, 0, 0}, suffix: suffix}
 	for i := 0; i < len(parts) && i < 3; i++ {
 		if parsed, err := strconv.Atoi(parts[i]); err == nil {
-			result[i] = parsed
+			result.parts[i] = parsed
+		}
+	}
+	if suffix != "" {
+		suffixParts := strings.Split(suffix, ".")
+		if len(suffixParts) > 0 {
+			result.suffix = suffixParts[0]
+		}
+		if len(suffixParts) > 1 {
+			if parsed, err := strconv.Atoi(suffixParts[1]); err == nil {
+				result.suffixSeq = parsed
+			}
 		}
 	}
 	return result
