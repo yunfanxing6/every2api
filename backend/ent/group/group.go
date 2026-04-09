@@ -65,16 +65,6 @@ const (
 	FieldGrokVideoPrice15s = "grok_video_price_15s"
 	// FieldGrokVideoHighQualityMultiplier holds the string denoting the grok_video_high_quality_multiplier field in the database.
 	FieldGrokVideoHighQualityMultiplier = "grok_video_high_quality_multiplier"
-	// FieldSoraImagePrice360 holds the string denoting the sora_image_price_360 field in the database.
-	FieldSoraImagePrice360 = "sora_image_price_360"
-	// FieldSoraImagePrice540 holds the string denoting the sora_image_price_540 field in the database.
-	FieldSoraImagePrice540 = "sora_image_price_540"
-	// FieldSoraVideoPricePerRequest holds the string denoting the sora_video_price_per_request field in the database.
-	FieldSoraVideoPricePerRequest = "sora_video_price_per_request"
-	// FieldSoraVideoPricePerRequestHd holds the string denoting the sora_video_price_per_request_hd field in the database.
-	FieldSoraVideoPricePerRequestHd = "sora_video_price_per_request_hd"
-	// FieldSoraStorageQuotaBytes holds the string denoting the sora_storage_quota_bytes field in the database.
-	FieldSoraStorageQuotaBytes = "sora_storage_quota_bytes"
 	// FieldClaudeCodeOnly holds the string denoting the claude_code_only field in the database.
 	FieldClaudeCodeOnly = "claude_code_only"
 	// FieldFallbackGroupID holds the string denoting the fallback_group_id field in the database.
@@ -199,11 +189,6 @@ var Columns = []string{
 	FieldGrokVideoPrice10s,
 	FieldGrokVideoPrice15s,
 	FieldGrokVideoHighQualityMultiplier,
-	FieldSoraImagePrice360,
-	FieldSoraImagePrice540,
-	FieldSoraVideoPricePerRequest,
-	FieldSoraVideoPricePerRequestHd,
-	FieldSoraStorageQuotaBytes,
 	FieldClaudeCodeOnly,
 	FieldFallbackGroupID,
 	FieldFallbackGroupIDOnInvalidRequest,
@@ -271,8 +256,6 @@ var (
 	SubscriptionTypeValidator func(string) error
 	// DefaultDefaultValidityDays holds the default value on creation for the "default_validity_days" field.
 	DefaultDefaultValidityDays int
-	// DefaultSoraStorageQuotaBytes holds the default value on creation for the "sora_storage_quota_bytes" field.
-	DefaultSoraStorageQuotaBytes int64
 	// DefaultClaudeCodeOnly holds the default value on creation for the "claude_code_only" field.
 	DefaultClaudeCodeOnly bool
 	// DefaultModelRoutingEnabled holds the default value on creation for the "model_routing_enabled" field.
@@ -426,31 +409,6 @@ func ByGrokVideoPrice15s(opts ...sql.OrderTermOption) OrderOption {
 // ByGrokVideoHighQualityMultiplier orders the results by the grok_video_high_quality_multiplier field.
 func ByGrokVideoHighQualityMultiplier(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGrokVideoHighQualityMultiplier, opts...).ToFunc()
-}
-
-// BySoraImagePrice360 orders the results by the sora_image_price_360 field.
-func BySoraImagePrice360(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSoraImagePrice360, opts...).ToFunc()
-}
-
-// BySoraImagePrice540 orders the results by the sora_image_price_540 field.
-func BySoraImagePrice540(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSoraImagePrice540, opts...).ToFunc()
-}
-
-// BySoraVideoPricePerRequest orders the results by the sora_video_price_per_request field.
-func BySoraVideoPricePerRequest(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSoraVideoPricePerRequest, opts...).ToFunc()
-}
-
-// BySoraVideoPricePerRequestHd orders the results by the sora_video_price_per_request_hd field.
-func BySoraVideoPricePerRequestHd(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSoraVideoPricePerRequestHd, opts...).ToFunc()
-}
-
-// BySoraStorageQuotaBytes orders the results by the sora_storage_quota_bytes field.
-func BySoraStorageQuotaBytes(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSoraStorageQuotaBytes, opts...).ToFunc()
 }
 
 // ByClaudeCodeOnly orders the results by the claude_code_only field.
