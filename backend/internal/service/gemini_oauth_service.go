@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -153,7 +154,7 @@ func (s *GeminiOAuthService) GenerateAuthURL(ctx context.Context, proxyID *int64
 		return nil, err
 	}
 
-	isBuiltinClient := effectiveCfg.ClientID == geminicli.GeminiCLIOAuthClientID
+	isBuiltinClient := effectiveCfg.ClientID == geminiBuiltinOAuthClientID()
 
 	// AI Studio OAuth requires a user-provided OAuth client (built-in Gemini CLI client is scope-restricted).
 	if oauthType == "ai_studio" && isBuiltinClient {
@@ -485,7 +486,7 @@ func (s *GeminiOAuthService) ExchangeCode(ctx context.Context, input *GeminiExch
 		if err != nil {
 			return nil, err
 		}
-		isBuiltinClient := effectiveCfg.ClientID == geminicli.GeminiCLIOAuthClientID
+		isBuiltinClient := effectiveCfg.ClientID == geminiBuiltinOAuthClientID()
 		if isBuiltinClient {
 			return nil, fmt.Errorf("AI Studio OAuth requires a custom OAuth Client. Please use an AI Studio API Key account, or configure GEMINI_OAUTH_CLIENT_ID / GEMINI_OAUTH_CLIENT_SECRET and re-authorize")
 		}
@@ -670,6 +671,13 @@ func (s *GeminiOAuthService) ExchangeCode(ctx context.Context, input *GeminiExch
 	logger.LegacyPrintf("service.gemini_oauth", "[GeminiOAuth] Final result - OAuth Type: %s, Project ID: %s, Tier ID: %s", result.OAuthType, result.ProjectID, result.TierID)
 	logger.LegacyPrintf("service.gemini_oauth", "[GeminiOAuth] ========== ExchangeCode END ==========")
 	return result, nil
+}
+
+func geminiBuiltinOAuthClientID() string {
+	if id := strings.TrimSpace(geminicli.GeminiCLIOAuthClientID); id != "" {
+		return id
+	}
+	return strings.TrimSpace(os.Getenv(geminicli.GeminiCLIOAuthClientIDEnv))
 }
 
 func (s *GeminiOAuthService) RefreshToken(ctx context.Context, oauthType, refreshToken, proxyURL string) (*GeminiTokenInfo, error) {
