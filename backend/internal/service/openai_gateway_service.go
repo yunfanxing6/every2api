@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"sort"
@@ -20,6 +21,7 @@ import (
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/config"
+	"github.com/Wei-Shaw/sub2api/internal/pkg/apicompat"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
 	"github.com/Wei-Shaw/sub2api/internal/pkg/openai"
 	"github.com/Wei-Shaw/sub2api/internal/util/responseheaders"
@@ -406,6 +408,22 @@ func NewOpenAIGatewayService(
 	return svc
 }
 
+// ResolveChannelMapping 解析渠道级模型映射（代理到 ChannelService）。
+func (s *OpenAIGatewayService) ResolveChannelMapping(ctx context.Context, groupID int64, model string) ChannelMappingResult {
+	if s == nil || s.channelService == nil {
+		return ChannelMappingResult{MappedModel: model}
+	}
+	return s.channelService.ResolveChannelMapping(ctx, groupID, model)
+}
+
+// IsModelRestricted 检查模型是否被渠道限制（代理到 ChannelService）。
+func (s *OpenAIGatewayService) IsModelRestricted(ctx context.Context, groupID int64, model string) bool {
+	if s == nil || s.channelService == nil {
+		return false
+	}
+	return s.channelService.IsModelRestricted(ctx, groupID, model)
+}
+
 // ReplaceModelInBody 兼容旧 handler 调用，复用统一 JSON 替换实现。
 func (s *OpenAIGatewayService) ReplaceModelInBody(body []byte, newModel string) []byte {
 	return ReplaceModelInBody(body, newModel)
@@ -414,9 +432,47 @@ func (s *OpenAIGatewayService) ReplaceModelInBody(body []byte, newModel string) 
 // ResolveChannelMappingAndRestrict 兼容旧 handler 调用。
 func (s *OpenAIGatewayService) ResolveChannelMappingAndRestrict(ctx context.Context, groupID *int64, model string) (ChannelMappingResult, bool) {
 	if s == nil || s.channelService == nil {
-		return ChannelMappingResult{}, false
+		return ChannelMappingResult{MappedModel: model}, false
 	}
 	return s.channelService.ResolveChannelMappingAndRestrict(ctx, groupID, model)
+}
+
+func (s *OpenAIGatewayService) checkChannelPricingRestriction(ctx context.Context, groupID *int64, requestedModel string) bool {
+	if groupID == nil || s.channelService == nil || requestedModel == "" {
+		return false
+	}
+	mapping := s.channelService.ResolveChannelMapping(ctx, *groupID, requestedModel)
+	billingModel := billingModelForRestriction(mapping.BillingModelSource, requestedModel, mapping.MappedModel)
+	if billingModel == "" {
+		return false
+	}
+	return s.channelService.IsModelRestricted(ctx, *groupID, billingModel)
+}
+
+func (s *OpenAIGatewayService) isUpstreamModelRestrictedByChannel(ctx context.Context, groupID int64, account *Account, requestedModel string) bool {
+	if s.channelService == nil {
+		return false
+	}
+	upstreamModel := resolveOpenAIForwardModel(account, requestedModel, "")
+	if upstreamModel == "" {
+		return false
+	}
+	return s.channelService.IsModelRestricted(ctx, groupID, upstreamModel)
+}
+
+func (s *OpenAIGatewayService) needsUpstreamChannelRestrictionCheck(ctx context.Context, groupID *int64) bool {
+	if groupID == nil || s.channelService == nil {
+		return false
+	}
+	ch, err := s.channelService.GetChannelForGroup(ctx, *groupID)
+	if err != nil {
+		slog.Warn("failed to check openai channel upstream restriction", "group_id", *groupID, "error", err)
+		return false
+	}
+	if ch == nil || !ch.RestrictModels {
+		return false
+	}
+	return ch.BillingModelSource == BillingModelSourceUpstream
 }
 
 func (s *OpenAIGatewayService) getCodexSnapshotThrottle() *accountWriteThrottle {
@@ -1072,6 +1128,7 @@ func (s *OpenAIGatewayService) ExtractSessionID(c *gin.Context, body []byte) str
 //  1. Header: session_id
 //  2. Header: conversation_id
 //  3. Body:   prompt_cache_key (opencode)
+//  4. Body:   content-based fallback (model + system + tools + first user message)
 func (s *OpenAIGatewayService) GenerateSessionHash(c *gin.Context, body []byte) string {
 	if c == nil {
 		return ""
@@ -1083,6 +1140,9 @@ func (s *OpenAIGatewayService) GenerateSessionHash(c *gin.Context, body []byte) 
 	}
 	if sessionID == "" && len(body) > 0 {
 		sessionID = strings.TrimSpace(gjson.GetBytes(body, "prompt_cache_key").String())
+	}
+	if sessionID == "" && len(body) > 0 {
+		sessionID = deriveOpenAIContentSessionSeed(body)
 	}
 	if sessionID == "" {
 		return ""
@@ -1153,6 +1213,13 @@ func (s *OpenAIGatewayService) SelectAccountForModelWithExclusions(ctx context.C
 }
 
 func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}, stickyAccountID int64) (*Account, error) {
+	if s.checkChannelPricingRestriction(ctx, groupID, requestedModel) {
+		slog.Warn("channel pricing restriction blocked request",
+			"group_id", derefGroupID(groupID),
+			"model", requestedModel)
+		return nil, fmt.Errorf("%w supporting model: %s (channel pricing restriction)", ErrNoAvailableAccounts, requestedModel)
+	}
+
 	// 1. 尝试粘性会话命中
 	// Try sticky session hit
 	if account := s.tryStickySessionHit(ctx, groupID, sessionHash, requestedModel, excludedIDs, stickyAccountID); account != nil {
@@ -1168,7 +1235,7 @@ func (s *OpenAIGatewayService) selectAccountForModelWithExclusions(ctx context.C
 
 	// 3. 按优先级 + LRU 选择最佳账号
 	// Select by priority + LRU
-	selected := s.selectBestAccount(ctx, accounts, requestedModel, excludedIDs)
+	selected := s.selectBestAccount(ctx, groupID, accounts, requestedModel, excludedIDs)
 
 	if selected == nil {
 		if requestedModel != "" {
@@ -1235,6 +1302,11 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 		return nil
 	}
+	if groupID != nil && s.needsUpstreamChannelRestrictionCheck(ctx, groupID) &&
+		s.isUpstreamModelRestrictedByChannel(ctx, *groupID, account, requestedModel) {
+		_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
+		return nil
+	}
 
 	// 刷新会话 TTL 并返回账号
 	// Refresh session TTL and return account
@@ -1247,8 +1319,10 @@ func (s *OpenAIGatewayService) tryStickySessionHit(ctx context.Context, groupID 
 //
 // selectBestAccount selects the best account from candidates (priority + LRU).
 // Returns nil if no available account.
-func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, accounts []Account, requestedModel string, excludedIDs map[int64]struct{}) *Account {
+func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, groupID *int64, accounts []Account, requestedModel string, excludedIDs map[int64]struct{}) *Account {
 	var selected *Account
+	needsUpstreamCheck := s.needsUpstreamChannelRestrictionCheck(ctx, groupID)
+	targetPlatform := OpenAICompatiblePlatformFromContext(ctx)
 
 	for i := range accounts {
 		acc := &accounts[i]
@@ -1265,6 +1339,12 @@ func (s *OpenAIGatewayService) selectBestAccount(ctx context.Context, accounts [
 		}
 		fresh = s.recheckSelectedOpenAIAccountFromDB(ctx, fresh, requestedModel)
 		if fresh == nil {
+			continue
+		}
+		if !fresh.MatchesPlatform(targetPlatform) {
+			continue
+		}
+		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel) {
 			continue
 		}
 
@@ -1318,7 +1398,16 @@ func (s *OpenAIGatewayService) isBetterAccount(candidate, current *Account) bool
 
 // SelectAccountWithLoadAwareness selects an account with load-awareness and wait plan.
 func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Context, groupID *int64, sessionHash string, requestedModel string, excludedIDs map[int64]struct{}) (*AccountSelectionResult, error) {
+	if s.checkChannelPricingRestriction(ctx, groupID, requestedModel) {
+		slog.Warn("channel pricing restriction blocked request",
+			"group_id", derefGroupID(groupID),
+			"model", requestedModel)
+		return nil, fmt.Errorf("%w supporting model: %s (channel pricing restriction)", ErrNoAvailableAccounts, requestedModel)
+	}
+
 	cfg := s.schedulingConfig()
+	needsUpstreamCheck := s.needsUpstreamChannelRestrictionCheck(ctx, groupID)
+	targetPlatform := OpenAICompatiblePlatformFromContext(ctx)
 	var stickyAccountID int64
 	if sessionHash != "" && s.cache != nil {
 		if accountID, err := s.getStickySessionAccountID(ctx, groupID, sessionHash); err == nil {
@@ -1395,6 +1484,8 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 					account = s.recheckSelectedOpenAIAccountFromDB(ctx, account, requestedModel)
 					if account == nil {
 						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
+					} else if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, account, requestedModel) {
+						_ = s.deleteStickySessionAccountID(ctx, groupID, sessionHash)
 					} else {
 						result, err := s.tryAcquireAccountSlot(ctx, accountID, account.Concurrency)
 						if err == nil && result.Acquired {
@@ -1431,6 +1522,9 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 		if isExcluded(acc.ID) {
 			continue
 		}
+		if !acc.MatchesPlatform(targetPlatform) {
+			continue
+		}
 		// Scheduler snapshots can be temporarily stale (bucket rebuild is throttled);
 		// re-check schedulability here so recently rate-limited/overloaded accounts
 		// are not selected again before the bucket is rebuilt.
@@ -1438,6 +1532,9 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 			continue
 		}
 		if requestedModel != "" && !acc.IsModelSupported(requestedModel) {
+			continue
+		}
+		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, acc, requestedModel) {
 			continue
 		}
 		candidates = append(candidates, acc)
@@ -1462,6 +1559,9 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 		for _, acc := range ordered {
 			fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel)
 			if fresh == nil {
+				continue
+			}
+			if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel) {
 				continue
 			}
 			result, err := s.tryAcquireAccountSlot(ctx, fresh.ID, fresh.Concurrency)
@@ -1518,6 +1618,9 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 				if fresh == nil {
 					continue
 				}
+				if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel) {
+					continue
+				}
 				result, err := s.tryAcquireAccountSlot(ctx, fresh.ID, fresh.Concurrency)
 				if err == nil && result.Acquired {
 					if sessionHash != "" {
@@ -1538,6 +1641,9 @@ func (s *OpenAIGatewayService) SelectAccountWithLoadAwareness(ctx context.Contex
 	for _, acc := range candidates {
 		fresh := s.resolveFreshSchedulableOpenAIAccount(ctx, acc, requestedModel)
 		if fresh == nil {
+			continue
+		}
+		if needsUpstreamCheck && s.isUpstreamModelRestrictedByChannel(ctx, *groupID, fresh, requestedModel) {
 			continue
 		}
 		return &AccountSelectionResult{
@@ -1965,6 +2071,11 @@ func (s *OpenAIGatewayService) Forward(ctx context.Context, c *gin.Context, acco
 			bodyModified = true
 			markPatchDelete("previous_response_id")
 		}
+	}
+
+	if sanitizeEmptyBase64InputImagesInOpenAIRequestBodyMap(reqBody) {
+		bodyModified = true
+		disablePatch()
 	}
 
 	// Re-serialize body only if modified
@@ -2423,6 +2534,14 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		return nil, err
 	}
 
+	sanitizedBody, sanitized, err := sanitizeEmptyBase64InputImagesInOpenAIBody(body)
+	if err != nil {
+		return nil, err
+	}
+	if sanitized {
+		body = sanitizedBody
+	}
+
 	upstreamCtx, releaseUpstreamCtx := detachStreamUpstreamContext(ctx, reqStream)
 	upstreamReq, err := s.buildUpstreamRequestOpenAIPassthrough(upstreamCtx, c, account, body, token)
 	releaseUpstreamCtx()
@@ -2870,6 +2989,10 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 		return nil, err
 	}
 
+	if isEventStreamResponse(resp.Header) {
+		return s.handlePassthroughSSEToJSON(resp, c, body)
+	}
+
 	usage := &OpenAIUsage{}
 	usageParsed := false
 	if len(body) > 0 {
@@ -2890,6 +3013,53 @@ func (s *OpenAIGatewayService) handleNonStreamingResponsePassthrough(
 		contentType = "application/json"
 	}
 	c.Data(resp.StatusCode, contentType, body)
+	return usage, nil
+}
+
+// handlePassthroughSSEToJSON converts an SSE response body into a JSON
+// response for the passthrough path. It mirrors handleSSEToJSON but skips
+// model replacement (passthrough does not remap models).
+func (s *OpenAIGatewayService) handlePassthroughSSEToJSON(resp *http.Response, c *gin.Context, body []byte) (*OpenAIUsage, error) {
+	bodyText := string(body)
+	finalResponse, ok := extractCodexFinalResponse(bodyText)
+
+	usage := &OpenAIUsage{}
+	if ok {
+		if parsedUsage, parsed := extractOpenAIUsageFromJSONBytes(finalResponse); parsed {
+			*usage = parsedUsage
+		}
+		if len(gjson.GetBytes(finalResponse, "output").Array()) == 0 {
+			if outputJSON, reconstructed := reconstructResponseOutputFromSSE(bodyText); reconstructed {
+				if patched, err := sjson.SetRawBytes(finalResponse, "output", outputJSON); err == nil {
+					finalResponse = patched
+				}
+			}
+		}
+		body = finalResponse
+		body = s.correctToolCallsInResponseBody(body)
+	} else {
+		terminalType, terminalPayload, terminalOK := extractOpenAISSETerminalEvent(bodyText)
+		if terminalOK && terminalType == "response.failed" {
+			msg := extractOpenAISSEErrorMessage(terminalPayload)
+			if msg == "" {
+				msg = "Upstream compact response failed"
+			}
+			return nil, s.writeOpenAINonStreamingProtocolError(resp, c, msg)
+		}
+		usage = s.parseSSEUsageFromBody(bodyText)
+	}
+
+	writeOpenAIPassthroughResponseHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
+
+	contentType := "application/json; charset=utf-8"
+	if !ok {
+		contentType = resp.Header.Get("Content-Type")
+		if contentType == "" {
+			contentType = "text/event-stream"
+		}
+	}
+	c.Data(resp.StatusCode, contentType, body)
+
 	return usage, nil
 }
 
@@ -3721,10 +3891,13 @@ func (s *OpenAIGatewayService) handleNonStreamingResponse(ctx context.Context, r
 		return nil, err
 	}
 
+	if isEventStreamResponse(resp.Header) {
+		return s.handleSSEToJSON(resp, c, body, originalModel, mappedModel)
+	}
 	if account.Type == AccountTypeOAuth {
 		bodyLooksLikeSSE := bytes.Contains(body, []byte("data:")) || bytes.Contains(body, []byte("event:"))
-		if isEventStreamResponse(resp.Header) || bodyLooksLikeSSE {
-			return s.handleOAuthSSEToJSON(resp, c, body, originalModel, mappedModel)
+		if bodyLooksLikeSSE {
+			return s.handleSSEToJSON(resp, c, body, originalModel, mappedModel)
 		}
 	}
 
@@ -3758,7 +3931,7 @@ func isEventStreamResponse(header http.Header) bool {
 	return strings.Contains(contentType, "text/event-stream")
 }
 
-func (s *OpenAIGatewayService) handleOAuthSSEToJSON(resp *http.Response, c *gin.Context, body []byte, originalModel, mappedModel string) (*OpenAIUsage, error) {
+func (s *OpenAIGatewayService) handleSSEToJSON(resp *http.Response, c *gin.Context, body []byte, originalModel, mappedModel string) (*OpenAIUsage, error) {
 	bodyText := string(body)
 	finalResponse, ok := extractCodexFinalResponse(bodyText)
 
@@ -3866,6 +4039,34 @@ func extractCodexFinalResponse(body string) ([]byte, bool) {
 		}
 	}
 	return nil, false
+}
+
+// reconstructResponseOutputFromSSE scans raw SSE body text for delta events and
+// returns a JSON-encoded output array reconstructed from accumulated deltas.
+// Returns (nil, false) if no content was found in deltas.
+func reconstructResponseOutputFromSSE(bodyText string) ([]byte, bool) {
+	acc := apicompat.NewBufferedResponseAccumulator()
+	lines := strings.Split(bodyText, "\n")
+	for _, line := range lines {
+		data, ok := extractOpenAISSEDataLine(line)
+		if !ok || data == "" || data == "[DONE]" {
+			continue
+		}
+		var event apicompat.ResponsesStreamEvent
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue
+		}
+		acc.ProcessEvent(&event)
+	}
+	if !acc.HasContent() {
+		return nil, false
+	}
+	output := acc.BuildOutput()
+	outputJSON, err := json.Marshal(output)
+	if err != nil {
+		return nil, false
+	}
+	return outputJSON, true
 }
 
 func (s *OpenAIGatewayService) parseSSEUsageFromBody(body string) *OpenAIUsage {
@@ -4785,6 +4986,123 @@ func normalizeOpenAIServiceTier(raw string) *string {
 	default:
 		return nil
 	}
+}
+
+func sanitizeEmptyBase64InputImagesInOpenAIBody(body []byte) ([]byte, bool, error) {
+	if len(body) == 0 || !bytes.Contains(body, []byte(`"image_url"`)) || !bytes.Contains(body, []byte(`base64,`)) {
+		return body, false, nil
+	}
+
+	var reqBody map[string]any
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		return body, false, fmt.Errorf("sanitize request body: %w", err)
+	}
+	if !sanitizeEmptyBase64InputImagesInOpenAIRequestBodyMap(reqBody) {
+		return body, false, nil
+	}
+	normalized, err := json.Marshal(reqBody)
+	if err != nil {
+		return body, false, fmt.Errorf("serialize sanitized request body: %w", err)
+	}
+	return normalized, true, nil
+}
+
+func sanitizeEmptyBase64InputImagesInOpenAIRequestBodyMap(reqBody map[string]any) bool {
+	if reqBody == nil {
+		return false
+	}
+	input, ok := reqBody["input"]
+	if !ok {
+		return false
+	}
+	normalizedInput, changed := sanitizeEmptyBase64InputImagesInOpenAIInput(input)
+	if !changed {
+		return false
+	}
+	reqBody["input"] = normalizedInput
+	return true
+}
+
+func sanitizeEmptyBase64InputImagesInOpenAIInput(input any) (any, bool) {
+	items, ok := input.([]any)
+	if !ok {
+		return input, false
+	}
+
+	normalizedItems := make([]any, 0, len(items))
+	changed := false
+	for _, item := range items {
+		itemMap, ok := item.(map[string]any)
+		if !ok {
+			normalizedItems = append(normalizedItems, item)
+			continue
+		}
+		if shouldDropEmptyBase64InputImagePart(itemMap) {
+			changed = true
+			continue
+		}
+		content, ok := itemMap["content"]
+		if !ok {
+			normalizedItems = append(normalizedItems, itemMap)
+			continue
+		}
+		parts, ok := content.([]any)
+		if !ok {
+			normalizedItems = append(normalizedItems, itemMap)
+			continue
+		}
+
+		normalizedParts := make([]any, 0, len(parts))
+		itemChanged := false
+		for _, part := range parts {
+			if shouldDropEmptyBase64InputImagePart(part) {
+				changed = true
+				itemChanged = true
+				continue
+			}
+			normalizedParts = append(normalizedParts, part)
+		}
+		if itemChanged {
+			if len(normalizedParts) == 0 {
+				continue
+			}
+			itemMap["content"] = normalizedParts
+		}
+		normalizedItems = append(normalizedItems, itemMap)
+	}
+	if !changed {
+		return input, false
+	}
+	return normalizedItems, true
+}
+
+func shouldDropEmptyBase64InputImagePart(part any) bool {
+	partMap, ok := part.(map[string]any)
+	if !ok {
+		return false
+	}
+	typeValue, _ := partMap["type"].(string)
+	if strings.TrimSpace(typeValue) != "input_image" {
+		return false
+	}
+	imageURL, _ := partMap["image_url"].(string)
+	return isEmptyBase64DataURI(imageURL)
+}
+
+func isEmptyBase64DataURI(raw string) bool {
+	if !strings.HasPrefix(raw, "data:") {
+		return false
+	}
+	rest := strings.TrimPrefix(raw, "data:")
+	semicolonIdx := strings.Index(rest, ";")
+	if semicolonIdx < 0 {
+		return false
+	}
+	rest = rest[semicolonIdx+1:]
+	if !strings.HasPrefix(rest, "base64,") {
+		return false
+	}
+	return strings.TrimSpace(strings.TrimPrefix(rest, "base64,")) == ""
 }
 
 func getOpenAIRequestBodyMap(c *gin.Context, body []byte) (map[string]any, error) {
