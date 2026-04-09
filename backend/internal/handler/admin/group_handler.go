@@ -84,7 +84,7 @@ func NewGroupHandler(adminService service.AdminService, dashboardService *servic
 type CreateGroupRequest struct {
 	Name             string             `json:"name" binding:"required"`
 	Description      string             `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok gemini antigravity sora"`
+	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok gemini antigravity"`
 	RateMultiplier   float64            `json:"rate_multiplier"`
 	IsExclusive      bool               `json:"is_exclusive"`
 	SubscriptionType string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
@@ -103,10 +103,6 @@ type CreateGroupRequest struct {
 	GrokVideoPrice10S               *float64 `json:"grok_video_price_10s"`
 	GrokVideoPrice15S               *float64 `json:"grok_video_price_15s"`
 	GrokVideoHighQualityMultiplier  *float64 `json:"grok_video_high_quality_multiplier"`
-	SoraImagePrice360               *float64 `json:"sora_image_price_360"`
-	SoraImagePrice540               *float64 `json:"sora_image_price_540"`
-	SoraVideoPricePerRequest        *float64 `json:"sora_video_price_per_request"`
-	SoraVideoPricePerRequestHD      *float64 `json:"sora_video_price_per_request_hd"`
 	ClaudeCodeOnly                  bool     `json:"claude_code_only"`
 	FallbackGroupID                 *int64   `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
@@ -116,8 +112,6 @@ type CreateGroupRequest struct {
 	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string `json:"supported_model_scopes"`
-	// Sora 存储配额
-	SoraStorageQuotaBytes int64 `json:"sora_storage_quota_bytes"`
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
 	AllowMessagesDispatch bool   `json:"allow_messages_dispatch"`
 	DefaultMappedModel    string `json:"default_mapped_model"`
@@ -129,7 +123,7 @@ type CreateGroupRequest struct {
 type UpdateGroupRequest struct {
 	Name             string             `json:"name"`
 	Description      string             `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok gemini antigravity sora"`
+	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok gemini antigravity"`
 	RateMultiplier   *float64           `json:"rate_multiplier"`
 	IsExclusive      *bool              `json:"is_exclusive"`
 	Status           string             `json:"status" binding:"omitempty,oneof=active inactive"`
@@ -149,10 +143,6 @@ type UpdateGroupRequest struct {
 	GrokVideoPrice10S               *float64 `json:"grok_video_price_10s"`
 	GrokVideoPrice15S               *float64 `json:"grok_video_price_15s"`
 	GrokVideoHighQualityMultiplier  *float64 `json:"grok_video_high_quality_multiplier"`
-	SoraImagePrice360               *float64 `json:"sora_image_price_360"`
-	SoraImagePrice540               *float64 `json:"sora_image_price_540"`
-	SoraVideoPricePerRequest        *float64 `json:"sora_video_price_per_request"`
-	SoraVideoPricePerRequestHD      *float64 `json:"sora_video_price_per_request_hd"`
 	ClaudeCodeOnly                  *bool    `json:"claude_code_only"`
 	FallbackGroupID                 *int64   `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
@@ -162,8 +152,6 @@ type UpdateGroupRequest struct {
 	MCPXMLInject        *bool              `json:"mcp_xml_inject"`
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string `json:"supported_model_scopes"`
-	// Sora 存储配额
-	SoraStorageQuotaBytes *int64 `json:"sora_storage_quota_bytes"`
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
 	AllowMessagesDispatch *bool   `json:"allow_messages_dispatch"`
 	DefaultMappedModel    *string `json:"default_mapped_model"`
