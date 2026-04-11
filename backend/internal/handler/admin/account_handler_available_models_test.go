@@ -138,6 +138,8 @@ func TestAccountHandlerGetAvailableModels_GrokAPIKeyUsesDefaultGrokAliases(t *te
 	for _, item := range resp.Data {
 		ids = append(ids, item.ID)
 	}
-	require.Contains(t, ids, "grok-4.20-beta")
-	require.Contains(t, ids, "grok-imagine-1.0-fast")
+	require.Contains(t, ids, "grok-4.20-0309-non-reasoning")
+	require.Contains(t, ids, "grok-4.20-0309")
+	require.Contains(t, ids, "grok-4.20-0309-reasoning")
+	require.Contains(t, ids, "grok-imagine-image-lite")
 }

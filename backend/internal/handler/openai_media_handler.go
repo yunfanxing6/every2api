@@ -24,10 +24,10 @@ import (
 )
 
 const (
-	grokImageGenerationModel = "grok-imagine-1.0-fast"
-	grokImageEditModel       = "grok-imagine-1.0-edit"
-	grokVideoModel           = "grok-imagine-1.0-video"
+	grokImageGenerationModel = "grok-imagine-image-lite"
 )
+
+var errUnsupportedGrokImageModel = errors.New("unsupported grok image model")
 
 type grokMediaRequestMeta struct {
 	Model        string
@@ -114,9 +114,6 @@ func parseGrokImageEditRequestMeta(body []byte, contentType string) (grokMediaRe
 		return grokMediaRequestMeta{}, err
 	}
 	model := strings.TrimSpace(fields["model"])
-	if model == "" {
-		model = grokImageEditModel
-	}
 	size := strings.TrimSpace(fields["size"])
 	if size == "" {
 		size = "1024x1024"
@@ -143,9 +140,6 @@ func parseGrokVideoRequestMeta(body []byte, contentType string) (grokMediaReques
 	trimmedContentType := strings.ToLower(strings.TrimSpace(contentType))
 	if strings.HasPrefix(trimmedContentType, "application/json") {
 		model := strings.TrimSpace(gjson.GetBytes(body, "model").String())
-		if model == "" {
-			model = grokVideoModel
-		}
 		seconds := int(gjson.GetBytes(body, "seconds").Int())
 		if seconds <= 0 {
 			seconds = 6
@@ -161,9 +155,6 @@ func parseGrokVideoRequestMeta(body []byte, contentType string) (grokMediaReques
 		return grokMediaRequestMeta{}, err
 	}
 	model := strings.TrimSpace(fields["model"])
-	if model == "" {
-		model = grokVideoModel
-	}
 	seconds := 6
 	if raw := strings.TrimSpace(fields["seconds"]); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 {
@@ -336,6 +327,10 @@ func (h *OpenAIGatewayHandler) handleGrokMediaCreate(
 	contentType := c.GetHeader("Content-Type")
 	meta, err := parseMeta(body, contentType)
 	if err != nil {
+		if errors.Is(err, errUnsupportedGrokImageModel) {
+			h.errorResponse(c, http.StatusBadRequest, "model_not_supported", "Only `grok-imagine-image-lite` is supported for Grok image generation")
+			return
+		}
 		h.errorResponse(c, http.StatusBadRequest, "invalid_request_error", "Failed to parse request body")
 		return
 	}
@@ -464,20 +459,24 @@ func (h *OpenAIGatewayHandler) ImageGenerations(c *gin.Context) {
 		if !gjson.ValidBytes(body) {
 			return grokMediaRequestMeta{}, io.ErrUnexpectedEOF
 		}
-		return parseGrokImageRequestMeta(body, grokImageGenerationModel), nil
+		meta := parseGrokImageRequestMeta(body, grokImageGenerationModel)
+		if meta.Model != grokImageGenerationModel {
+			return grokMediaRequestMeta{}, errUnsupportedGrokImageModel
+		}
+		return meta, nil
 	}, "image")
 }
 
 func (h *OpenAIGatewayHandler) ImageEdits(c *gin.Context) {
-	h.handleGrokMediaCreate(c, "/images/edits", parseGrokImageEditRequestMeta, "image")
+	h.errorResponse(c, http.StatusNotFound, "not_found_error", "This endpoint is not available for Grok integration")
 }
 
 func (h *OpenAIGatewayHandler) Videos(c *gin.Context) {
-	h.handleGrokMediaCreate(c, "/videos", parseGrokVideoRequestMeta, "video")
+	h.errorResponse(c, http.StatusNotFound, "not_found_error", "This endpoint is not available for Grok integration")
 }
 
 func (h *OpenAIGatewayHandler) VideoExtend(c *gin.Context) {
-	h.handleGrokMediaCreate(c, "/video/extend", parseGrokVideoRequestMeta, "video")
+	h.errorResponse(c, http.StatusNotFound, "not_found_error", "This endpoint is not available for Grok integration")
 }
 
 func (h *OpenAIGatewayHandler) ProxyGrokFile(c *gin.Context, mediaType string) {
