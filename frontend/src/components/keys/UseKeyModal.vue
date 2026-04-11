@@ -814,7 +814,7 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
   }
   const grokModels = {
     'grok-4.20-0309-non-reasoning': {
-      name: 'Grok 4.20 0309 Non-Reasoning',
+      name: 'Grok 4.20 0309 Non-Reasoning (Fast)',
       limit: {
         context: 262144,
         output: 32768
@@ -829,7 +829,7 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
       }
     },
     'grok-4.20-0309': {
-      name: 'Grok 4.20 0309',
+      name: 'Grok 4.20 0309 (Auto)',
       limit: {
         context: 262144,
         output: 32768
@@ -844,7 +844,7 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
       }
     },
     'grok-4.20-0309-reasoning': {
-      name: 'Grok 4.20 0309 Reasoning',
+      name: 'Grok 4.20 0309 Reasoning (Expert)',
       limit: {
         context: 262144,
         output: 32768

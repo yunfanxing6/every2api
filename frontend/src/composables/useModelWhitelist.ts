@@ -297,10 +297,10 @@ const openaiPresetMappings = [
 ]
 
 const grokPresetMappings = [
-  { label: '4.20 Fast', from: 'grok-4.20-0309-non-reasoning', to: 'grok-4.20-0309-non-reasoning', color: 'bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-400' },
-  { label: '4.20 Auto', from: 'grok-4.20-0309', to: 'grok-4.20-0309', color: 'bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-400' },
-  { label: '4.20 Expert', from: 'grok-4.20-0309-reasoning', to: 'grok-4.20-0309-reasoning', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400' },
-  { label: 'Imagine Lite', from: 'grok-imagine-image-lite', to: 'grok-imagine-image-lite', color: 'bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400' }
+  { label: 'Grok 4.20 0309 Non-Reasoning (Fast)', from: 'grok-4.20-0309-non-reasoning', to: 'grok-4.20-0309-non-reasoning', color: 'bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-400' },
+  { label: 'Grok 4.20 0309 (Auto)', from: 'grok-4.20-0309', to: 'grok-4.20-0309', color: 'bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-400' },
+  { label: 'Grok 4.20 0309 Reasoning (Expert)', from: 'grok-4.20-0309-reasoning', to: 'grok-4.20-0309-reasoning', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400' },
+  { label: 'Grok Imagine Image Lite', from: 'grok-imagine-image-lite', to: 'grok-imagine-image-lite', color: 'bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400' }
 ]
 
 const soraPresetMappings: { label: string; from: string; to: string; color: string }[] = []
