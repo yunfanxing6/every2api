@@ -417,7 +417,7 @@ func (s *AccountTestService) testOpenAIAccountConnection(c *gin.Context, account
 	testModelID := modelID
 	if testModelID == "" {
 		if account.IsGrok() {
-			testModelID = "grok-4.20-beta"
+			testModelID = "grok-4.20-0309"
 		} else {
 			testModelID = openai.DefaultTestModel
 		}

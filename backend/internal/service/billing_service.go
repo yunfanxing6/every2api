@@ -227,6 +227,9 @@ func (s *BillingService) initFallbackPricing() {
 	}
 	// Grok 4.20 Beta 暂按 GPT-5.4 兜底计费，后续可按 xAI 真实价格独立调整。
 	s.fallbackPrices["grok-4.20-beta"] = s.fallbackPrices["gpt-5.4"]
+	s.fallbackPrices["grok-4.20-0309-non-reasoning"] = s.fallbackPrices["gpt-5.4"]
+	s.fallbackPrices["grok-4.20-0309"] = s.fallbackPrices["gpt-5.4"]
+	s.fallbackPrices["grok-4.20-0309-reasoning"] = s.fallbackPrices["gpt-5.4"]
 	s.fallbackPrices["gpt-5.4-mini"] = &ModelPricing{
 		InputPricePerToken:     7.5e-7,
 		OutputPricePerToken:    4.5e-6,
@@ -306,6 +309,9 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	}
 	if strings.Contains(modelLower, "gemini-3.1-pro") || strings.Contains(modelLower, "gemini-3-1-pro") {
 		return s.fallbackPrices["gemini-3.1-pro"]
+	}
+	if strings.Contains(modelLower, "grok-4.20-0309") {
+		return s.fallbackPrices["grok-4.20-0309"]
 	}
 	if strings.Contains(modelLower, "grok-4.20-beta") {
 		return s.fallbackPrices["grok-4.20-beta"]
