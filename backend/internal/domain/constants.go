@@ -116,10 +116,10 @@ var DefaultAntigravityModelMapping = map[string]string{
 }
 
 var DefaultGrokModelMapping = map[string]string{
-	"grok-4.20-beta":         "grok-4.20-beta",
-	"grok-imagine-1.0-fast":  "grok-imagine-1.0-fast",
-	"grok-imagine-1.0-edit":  "grok-imagine-1.0-edit",
-	"grok-imagine-1.0-video": "grok-imagine-1.0-video",
+	"grok-4.20-0309-non-reasoning": "grok-4.20-0309-non-reasoning",
+	"grok-4.20-0309":               "grok-4.20-0309",
+	"grok-4.20-0309-reasoning":     "grok-4.20-0309-reasoning",
+	"grok-imagine-image-lite":      "grok-imagine-image-lite",
 }
 
 // DefaultBedrockModelMapping 是 AWS Bedrock 平台的默认模型映射
