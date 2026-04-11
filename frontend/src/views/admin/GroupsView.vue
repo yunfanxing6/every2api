@@ -2779,7 +2779,7 @@ watch(
       createForm.allow_messages_dispatch = false
       createForm.default_mapped_model = ''
     } else if (newVal === 'grok') {
-      createForm.default_mapped_model = 'grok-4.20-beta'
+      createForm.default_mapped_model = 'grok-4.20-0309'
     } else if (newVal === 'openai' && !createForm.default_mapped_model) {
       createForm.default_mapped_model = 'gpt-5.4'
     }

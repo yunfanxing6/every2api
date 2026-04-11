@@ -813,8 +813,8 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
     }
   }
   const grokModels = {
-    'grok-4.20-beta': {
-      name: 'Grok 4.20 Beta',
+    'grok-4.20-0309-non-reasoning': {
+      name: 'Grok 4.20 0309 Non-Reasoning',
       limit: {
         context: 262144,
         output: 32768
@@ -828,25 +828,41 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
         high: {}
       }
     },
-    'grok-imagine-1.0-fast': {
-      name: 'Grok Imagine Fast',
+    'grok-4.20-0309': {
+      name: 'Grok 4.20 0309',
+      limit: {
+        context: 262144,
+        output: 32768
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {}
+      }
+    },
+    'grok-4.20-0309-reasoning': {
+      name: 'Grok 4.20 0309 Reasoning',
+      limit: {
+        context: 262144,
+        output: 32768
+      },
+      options: {
+        store: false
+      },
+      variants: {
+        low: {},
+        medium: {},
+        high: {}
+      }
+    },
+    'grok-imagine-image-lite': {
+      name: 'Grok Imagine Image Lite',
       modalities: {
         input: ['text'],
         output: ['image']
-      }
-    },
-    'grok-imagine-1.0-edit': {
-      name: 'Grok Imagine Edit',
-      modalities: {
-        input: ['text', 'image'],
-        output: ['image']
-      }
-    },
-    'grok-imagine-1.0-video': {
-      name: 'Grok Imagine Video',
-      modalities: {
-        input: ['text', 'image'],
-        output: ['video']
       }
     }
   }
