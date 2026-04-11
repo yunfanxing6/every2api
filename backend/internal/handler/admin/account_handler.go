@@ -1817,9 +1817,13 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 
 		// Return mapped models
 		var models []openai.Model
+		catalog := openai.DefaultModels
+		if account.IsGrok() {
+			catalog = grok.DefaultModels
+		}
 		for requestedModel := range mapping {
 			var found bool
-			for _, dm := range openai.DefaultModels {
+			for _, dm := range catalog {
 				if dm.ID == requestedModel {
 					models = append(models, dm)
 					found = true

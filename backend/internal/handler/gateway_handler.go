@@ -54,6 +54,24 @@ type GatewayHandler struct {
 	settingService            *service.SettingService
 }
 
+func lookupOpenAICompatibleDisplayName(platform, modelID string) string {
+	if platform == service.PlatformGrok {
+		for _, model := range grok.DefaultModels {
+			if model.ID == modelID {
+				return model.DisplayName
+			}
+		}
+	}
+	if platform == service.PlatformOpenAI {
+		for _, model := range openai.DefaultModels {
+			if model.ID == modelID {
+				return model.DisplayName
+			}
+		}
+	}
+	return modelID
+}
+
 // NewGatewayHandler creates a new GatewayHandler
 func NewGatewayHandler(
 	gatewayService *service.GatewayService,
@@ -870,7 +888,7 @@ func (h *GatewayHandler) Models(c *gin.Context) {
 			models = append(models, claude.Model{
 				ID:          modelID,
 				Type:        "model",
-				DisplayName: modelID,
+				DisplayName: lookupOpenAICompatibleDisplayName(platform, modelID),
 				CreatedAt:   "2024-01-01T00:00:00Z",
 			})
 		}
