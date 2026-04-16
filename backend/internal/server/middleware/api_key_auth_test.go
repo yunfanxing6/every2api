@@ -3,6 +3,7 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
@@ -229,6 +230,168 @@ func TestAPIKeyAuthSetsGroupContext(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/t", nil)
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAPIKeyAuthResolvesMultiGroupByModelPlatform(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	anthropicGroup := service.Group{
+		ID:       101,
+		Name:     "anthropic-main",
+		Status:   service.StatusActive,
+		Platform: service.PlatformAnthropic,
+		Hydrated: true,
+	}
+	qwenGroup := service.Group{
+		ID:       202,
+		Name:     "qwen-default",
+		Status:   service.StatusActive,
+		Platform: service.PlatformQwen,
+		Hydrated: true,
+	}
+	user := &service.User{
+		ID:          7,
+		Role:        service.RoleUser,
+		Status:      service.StatusActive,
+		Balance:     10,
+		Concurrency: 3,
+	}
+	apiKey := &service.APIKey{
+		ID:       100,
+		UserID:   user.ID,
+		Key:      "test-key",
+		Status:   service.StatusActive,
+		User:     user,
+		GroupID:  &anthropicGroup.ID,
+		GroupIDs: []int64{anthropicGroup.ID, qwenGroup.ID},
+		Group:    &anthropicGroup,
+		Groups:   []service.Group{anthropicGroup, qwenGroup},
+	}
+
+	apiKeyRepo := &stubApiKeyRepo{
+		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+			if key != apiKey.Key {
+				return nil, service.ErrAPIKeyNotFound
+			}
+			clone := *apiKey
+			clone.Groups = append([]service.Group(nil), apiKey.Groups...)
+			return &clone, nil
+		},
+	}
+
+	cfg := &config.Config{RunMode: config.RunModeSimple}
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+	router := gin.New()
+	router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, nil, cfg)))
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		resolvedAPIKey, ok := GetAPIKeyFromContext(c)
+		require.True(t, ok)
+		require.NotNil(t, resolvedAPIKey)
+		require.NotNil(t, resolvedAPIKey.GroupID)
+		require.Equal(t, qwenGroup.ID, *resolvedAPIKey.GroupID)
+		require.NotNil(t, resolvedAPIKey.Group)
+		require.Equal(t, service.PlatformQwen, resolvedAPIKey.Group.Platform)
+
+		groupFromCtx, ok := c.Request.Context().Value(ctxkey.Group).(*service.Group)
+		require.True(t, ok)
+		require.NotNil(t, groupFromCtx)
+		require.Equal(t, qwenGroup.ID, groupFromCtx.ID)
+
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(`{"model":"qwen3.6-plus"}`))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-api-key", apiKey.Key)
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestAPIKeyAuthResolvesSamePlatformGroupByExplicitModels(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	primaryGroup := service.Group{
+		ID:                    301,
+		Name:                  "openai-primary",
+		Status:                service.StatusActive,
+		Platform:              service.PlatformOpenAI,
+		Hydrated:              true,
+		AllowMessagesDispatch: true,
+	}
+	targetGroup := service.Group{
+		ID:                    302,
+		Name:                  "openai-codex",
+		Status:                service.StatusActive,
+		Platform:              service.PlatformOpenAI,
+		Hydrated:              true,
+		AllowMessagesDispatch: true,
+	}
+	user := &service.User{
+		ID:          8,
+		Role:        service.RoleUser,
+		Status:      service.StatusActive,
+		Balance:     10,
+		Concurrency: 3,
+	}
+	apiKey := &service.APIKey{
+		ID:       101,
+		UserID:   user.ID,
+		Key:      "same-platform-key",
+		Status:   service.StatusActive,
+		User:     user,
+		GroupID:  &primaryGroup.ID,
+		GroupIDs: []int64{primaryGroup.ID, targetGroup.ID},
+		Group:    &primaryGroup,
+		Groups:   []service.Group{primaryGroup, targetGroup},
+	}
+
+	apiKeyRepo := &stubApiKeyRepo{
+		getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+			if key != apiKey.Key {
+				return nil, service.ErrAPIKeyNotFound
+			}
+			clone := *apiKey
+			clone.Groups = append([]service.Group(nil), apiKey.Groups...)
+			return &clone, nil
+		},
+	}
+
+	setAPIKeyGroupModelLookup(func(ctx context.Context, groupID int64, platform string) []string {
+		switch groupID {
+		case primaryGroup.ID:
+			return []string{"gpt-5.2"}
+		case targetGroup.ID:
+			return []string{"gpt-5.4"}
+		default:
+			return nil
+		}
+	})
+	defer setAPIKeyGroupModelLookup(nil)
+
+	cfg := &config.Config{RunMode: config.RunModeSimple}
+	apiKeyService := service.NewAPIKeyService(apiKeyRepo, nil, nil, nil, nil, nil, cfg)
+	router := gin.New()
+	router.Use(gin.HandlerFunc(NewAPIKeyAuthMiddleware(apiKeyService, nil, cfg)))
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		resolvedAPIKey, ok := GetAPIKeyFromContext(c)
+		require.True(t, ok)
+		require.NotNil(t, resolvedAPIKey)
+		require.NotNil(t, resolvedAPIKey.GroupID)
+		require.Equal(t, targetGroup.ID, *resolvedAPIKey.GroupID)
+		require.NotNil(t, resolvedAPIKey.Group)
+		require.Equal(t, targetGroup.ID, resolvedAPIKey.Group.ID)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewBufferString(`{"model":"gpt-5.4"}`))
+	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-api-key", apiKey.Key)
 	router.ServeHTTP(w, req)
 

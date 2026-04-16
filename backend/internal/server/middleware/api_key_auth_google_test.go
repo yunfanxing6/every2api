@@ -320,6 +320,63 @@ func TestApiKeyAuthWithSubscriptionGoogleSetsGroupContext(t *testing.T) {
 	require.Equal(t, http.StatusOK, rec.Code)
 }
 
+func TestApiKeyAuthWithSubscriptionGoogleResolvesGeminiGroupByRoute(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	openAIGroup := service.Group{ID: 11, Name: "openai-main", Status: service.StatusActive, Platform: service.PlatformOpenAI, Hydrated: true}
+	geminiGroup := service.Group{ID: 22, Name: "gemini-main", Status: service.StatusActive, Platform: service.PlatformGemini, Hydrated: true}
+	user := &service.User{ID: 1, Status: service.StatusActive, Role: service.RoleUser, Balance: 1, Concurrency: 2}
+	apiKey := &service.APIKey{
+		ID:       100,
+		UserID:   user.ID,
+		Key:      "goog-key",
+		Status:   service.StatusActive,
+		User:     user,
+		GroupID:  &openAIGroup.ID,
+		GroupIDs: []int64{openAIGroup.ID, geminiGroup.ID},
+		Group:    &openAIGroup,
+		Groups:   []service.Group{openAIGroup, geminiGroup},
+	}
+
+	apiKeyService := service.NewAPIKeyService(
+		fakeAPIKeyRepo{
+			getByKey: func(ctx context.Context, key string) (*service.APIKey, error) {
+				if key != apiKey.Key {
+					return nil, service.ErrAPIKeyNotFound
+				}
+				clone := *apiKey
+				clone.Groups = append([]service.Group(nil), apiKey.Groups...)
+				return &clone, nil
+			},
+		},
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		&config.Config{RunMode: config.RunModeSimple},
+	)
+
+	cfg := &config.Config{RunMode: config.RunModeSimple}
+	r := gin.New()
+	r.Use(APIKeyAuthWithSubscriptionGoogle(apiKeyService, nil, cfg))
+	r.GET("/v1beta/models/:model", func(c *gin.Context) {
+		resolvedAPIKey, ok := GetAPIKeyFromContext(c)
+		require.True(t, ok)
+		require.NotNil(t, resolvedAPIKey)
+		require.NotNil(t, resolvedAPIKey.GroupID)
+		require.Equal(t, geminiGroup.ID, *resolvedAPIKey.GroupID)
+		c.JSON(http.StatusOK, gin.H{"ok": true})
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1beta/models/gemini-2.5-pro", nil)
+	req.Header.Set("x-goog-api-key", apiKey.Key)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+}
+
 func TestApiKeyAuthWithSubscriptionGoogle_QueryKeyAllowedOnV1Beta(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
