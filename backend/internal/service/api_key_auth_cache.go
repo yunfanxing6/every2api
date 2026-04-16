@@ -4,14 +4,16 @@ import "time"
 
 // APIKeyAuthSnapshot API Key 认证缓存快照（仅包含认证所需字段）
 type APIKeyAuthSnapshot struct {
-	APIKeyID    int64                    `json:"api_key_id"`
-	UserID      int64                    `json:"user_id"`
-	GroupID     *int64                   `json:"group_id,omitempty"`
-	Status      string                   `json:"status"`
-	IPWhitelist []string                 `json:"ip_whitelist,omitempty"`
-	IPBlacklist []string                 `json:"ip_blacklist,omitempty"`
-	User        APIKeyAuthUserSnapshot   `json:"user"`
-	Group       *APIKeyAuthGroupSnapshot `json:"group,omitempty"`
+	APIKeyID    int64                     `json:"api_key_id"`
+	UserID      int64                     `json:"user_id"`
+	GroupID     *int64                    `json:"group_id,omitempty"`
+	GroupIDs    []int64                   `json:"group_ids,omitempty"`
+	Status      string                    `json:"status"`
+	IPWhitelist []string                  `json:"ip_whitelist,omitempty"`
+	IPBlacklist []string                  `json:"ip_blacklist,omitempty"`
+	User        APIKeyAuthUserSnapshot    `json:"user"`
+	Group       *APIKeyAuthGroupSnapshot  `json:"group,omitempty"`
+	Groups      []APIKeyAuthGroupSnapshot `json:"groups,omitempty"`
 
 	// Quota fields for API Key independent quota feature
 	Quota     float64 `json:"quota"`      // Quota limit in USD (0 = unlimited)
@@ -53,6 +55,10 @@ type APIKeyAuthGroupSnapshot struct {
 	GrokOutputPricePerMTok          *float64 `json:"grok_output_price_per_mtok,omitempty"`
 	GrokImagePrice1K                *float64 `json:"grok_image_price_1k,omitempty"`
 	GrokImagePrice2K                *float64 `json:"grok_image_price_2k,omitempty"`
+	QwenInputPricePerMTok           *float64 `json:"qwen_input_price_per_mtok,omitempty"`
+	QwenOutputPricePerMTok          *float64 `json:"qwen_output_price_per_mtok,omitempty"`
+	QwenImagePrice1K                *float64 `json:"qwen_image_price_1k,omitempty"`
+	QwenImagePrice2K                *float64 `json:"qwen_image_price_2k,omitempty"`
 	GrokVideoPrice5S                *float64 `json:"grok_video_price_5s,omitempty"`
 	GrokVideoPrice10S               *float64 `json:"grok_video_price_10s,omitempty"`
 	GrokVideoPrice15S               *float64 `json:"grok_video_price_15s,omitempty"`

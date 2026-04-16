@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sort"
 	"time"
 
 	"github.com/Wei-Shaw/sub2api/internal/pkg/ip"
@@ -33,6 +34,7 @@ type APIKey struct {
 	Key         string
 	Name        string
 	GroupID     *int64
+	GroupIDs    []int64
 	Status      string
 	IPWhitelist []string
 	IPBlacklist []string
@@ -44,6 +46,7 @@ type APIKey struct {
 	UpdatedAt           time.Time
 	User                *User
 	Group               *Group
+	Groups              []Group
 
 	// Quota fields
 	Quota     float64    // Quota limit in USD (0 = unlimited)
@@ -133,6 +136,52 @@ func (k *APIKey) EffectiveUsage7d() float64 {
 		return 0
 	}
 	return k.Usage7d
+}
+
+// NormalizeAPIKeyGroups merges group_id and group_ids into a stable persisted shape.
+// The returned primary group always mirrors the first normalized group ID.
+func NormalizeAPIKeyGroups(groupID *int64, groupIDs []int64) (*int64, []int64) {
+	seen := make(map[int64]struct{}, len(groupIDs)+1)
+	out := make([]int64, 0, len(groupIDs)+1)
+	appendID := func(id int64) {
+		if id <= 0 {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	if groupID != nil {
+		appendID(*groupID)
+	}
+	for _, id := range groupIDs {
+		appendID(id)
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	primary := out[0]
+	return &primary, out
+}
+
+func (k *APIKey) EffectiveGroupIDs() []int64 {
+	if k == nil {
+		return nil
+	}
+	if len(k.GroupIDs) > 0 {
+		return append([]int64(nil), k.GroupIDs...)
+	}
+	if k.GroupID != nil {
+		return []int64{*k.GroupID}
+	}
+	return nil
+}
+
+func (k *APIKey) HasGroupBinding() bool {
+	return len(k.EffectiveGroupIDs()) > 0
 }
 
 // APIKeyListFilters holds optional filtering parameters for listing API keys.

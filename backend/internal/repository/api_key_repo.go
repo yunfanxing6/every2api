@@ -3,7 +3,10 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -35,12 +38,13 @@ func (r *apiKeyRepository) activeQuery() *dbent.APIKeyQuery {
 }
 
 func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) error {
+	primaryGroupID, groupIDs := service.NormalizeAPIKeyGroups(key.GroupID, key.GroupIDs)
 	builder := r.client.APIKey.Create().
 		SetUserID(key.UserID).
 		SetKey(key.Key).
 		SetName(key.Name).
 		SetStatus(key.Status).
-		SetNillableGroupID(key.GroupID).
+		SetNillableGroupID(primaryGroupID).
 		SetNillableLastUsedAt(key.LastUsedAt).
 		SetQuota(key.Quota).
 		SetQuotaUsed(key.QuotaUsed).
@@ -59,9 +63,14 @@ func (r *apiKeyRepository) Create(ctx context.Context, key *service.APIKey) erro
 	created, err := builder.Save(ctx)
 	if err == nil {
 		key.ID = created.ID
+		key.GroupID = primaryGroupID
+		key.GroupIDs = groupIDs
 		key.LastUsedAt = created.LastUsedAt
 		key.CreatedAt = created.CreatedAt
 		key.UpdatedAt = created.UpdatedAt
+		if upErr := r.updateAPIKeyGroupIDs(ctx, key.ID, groupIDs); upErr != nil {
+			return upErr
+		}
 	}
 	return translatePersistenceError(err, nil, service.ErrAPIKeyExists)
 }
@@ -78,7 +87,11 @@ func (r *apiKeyRepository) GetByID(ctx context.Context, id int64) (*service.APIK
 		}
 		return nil, err
 	}
-	return apiKeyEntityToService(m), nil
+	apiKey := apiKeyEntityToService(m)
+	if err := r.hydrateAPIKeyGroups(ctx, apiKey); err != nil {
+		return nil, err
+	}
+	return apiKey, nil
 }
 
 // GetKeyAndOwnerID 根据 API Key ID 获取其 key 与所有者（用户）ID。
@@ -112,7 +125,11 @@ func (r *apiKeyRepository) GetByKey(ctx context.Context, key string) (*service.A
 		}
 		return nil, err
 	}
-	return apiKeyEntityToService(m), nil
+	apiKey := apiKeyEntityToService(m)
+	if err := r.hydrateAPIKeyGroups(ctx, apiKey); err != nil {
+		return nil, err
+	}
+	return apiKey, nil
 }
 
 func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*service.APIKey, error) {
@@ -173,7 +190,11 @@ func (r *apiKeyRepository) GetByKeyForAuth(ctx context.Context, key string) (*se
 		}
 		return nil, err
 	}
-	return apiKeyEntityToService(m), nil
+	apiKey := apiKeyEntityToService(m)
+	if err := r.hydrateAPIKeyGroups(ctx, apiKey); err != nil {
+		return nil, err
+	}
+	return apiKey, nil
 }
 
 func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey) error {
@@ -184,6 +205,7 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey) erro
 	// 同时显式设置 updated_at，避免二次查询带来的并发可见性问题。
 	client := clientFromContext(ctx, r.client)
 	now := time.Now()
+	primaryGroupID, groupIDs := service.NormalizeAPIKeyGroups(key.GroupID, key.GroupIDs)
 	builder := client.APIKey.Update().
 		Where(apikey.IDEQ(key.ID), apikey.DeletedAtIsNil()).
 		SetName(key.Name).
@@ -197,8 +219,8 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey) erro
 		SetUsage1d(key.Usage1d).
 		SetUsage7d(key.Usage7d).
 		SetUpdatedAt(now)
-	if key.GroupID != nil {
-		builder.SetGroupID(*key.GroupID)
+	if primaryGroupID != nil {
+		builder.SetGroupID(*primaryGroupID)
 	} else {
 		builder.ClearGroupID()
 	}
@@ -249,6 +271,11 @@ func (r *apiKeyRepository) Update(ctx context.Context, key *service.APIKey) erro
 	}
 
 	// 使用同一时间戳回填，避免并发删除导致二次查询失败。
+	key.GroupID = primaryGroupID
+	key.GroupIDs = groupIDs
+	if err := r.updateAPIKeyGroupIDs(ctx, key.ID, groupIDs); err != nil {
+		return err
+	}
 	key.UpdatedAt = now
 	return nil
 }
@@ -323,6 +350,9 @@ func (r *apiKeyRepository) ListByUserID(ctx context.Context, userID int64, param
 	for i := range keys {
 		outKeys = append(outKeys, *apiKeyEntityToService(keys[i]))
 	}
+	if err := r.hydrateAPIKeyGroupsBatch(ctx, outKeys); err != nil {
+		return nil, nil, err
+	}
 
 	return outKeys, paginationResultFromTotal(int64(total), params), nil
 }
@@ -372,6 +402,9 @@ func (r *apiKeyRepository) ListByGroupID(ctx context.Context, groupID int64, par
 	outKeys := make([]service.APIKey, 0, len(keys))
 	for i := range keys {
 		outKeys = append(outKeys, *apiKeyEntityToService(keys[i]))
+	}
+	if err := r.hydrateAPIKeyGroupsBatch(ctx, outKeys); err != nil {
+		return nil, nil, err
 	}
 
 	return outKeys, paginationResultFromTotal(int64(total), params), nil
@@ -597,6 +630,113 @@ func apiKeyEntityToService(m *dbent.APIKey) *service.APIKey {
 		out.Group = groupEntityToService(m.Edges.Group)
 	}
 	return out
+}
+
+func (r *apiKeyRepository) updateAPIKeyGroupIDs(ctx context.Context, keyID int64, groupIDs []int64) error {
+	payload, err := json.Marshal(groupIDs)
+	if err != nil {
+		return fmt.Errorf("marshal api key group ids: %w", err)
+	}
+	_, err = r.sql.ExecContext(ctx, "UPDATE api_keys SET group_ids = $1::jsonb WHERE id = $2", string(payload), keyID)
+	if err != nil {
+		return fmt.Errorf("update api key group ids: %w", err)
+	}
+	return nil
+}
+
+func (r *apiKeyRepository) hydrateAPIKeyGroups(ctx context.Context, apiKey *service.APIKey) error {
+	if apiKey == nil {
+		return nil
+	}
+	items := []service.APIKey{*apiKey}
+	if err := r.hydrateAPIKeyGroupsBatch(ctx, items); err != nil {
+		return err
+	}
+	*apiKey = items[0]
+	return nil
+}
+
+func (r *apiKeyRepository) hydrateAPIKeyGroupsBatch(ctx context.Context, keys []service.APIKey) error {
+	if len(keys) == 0 {
+		return nil
+	}
+	ids := make([]int64, 0, len(keys))
+	for i := range keys {
+		ids = append(ids, keys[i].ID)
+	}
+	rows, err := r.sql.QueryContext(ctx, "SELECT id, group_ids FROM api_keys WHERE id = ANY($1)", pqInt64Array(ids))
+	if err != nil {
+		return fmt.Errorf("query api key group ids: %w", err)
+	}
+	defer rows.Close()
+	groupIDsByKey := make(map[int64][]int64, len(keys))
+	allGroupIDs := make(map[int64]struct{})
+	for rows.Next() {
+		var id int64
+		var raw string
+		if err := rows.Scan(&id, &raw); err != nil {
+			return err
+		}
+		var gids []int64
+		if strings.TrimSpace(raw) != "" {
+			_ = json.Unmarshal([]byte(raw), &gids)
+		}
+		groupIDsByKey[id] = gids
+		for _, gid := range gids {
+			if gid > 0 {
+				allGroupIDs[gid] = struct{}{}
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	groupMap := make(map[int64]*service.Group)
+	if len(allGroupIDs) > 0 {
+		ids := make([]int64, 0, len(allGroupIDs))
+		for gid := range allGroupIDs {
+			ids = append(ids, gid)
+		}
+		groups, err := r.client.Group.Query().Where(group.IDIn(ids...), group.DeletedAtIsNil()).All(ctx)
+		if err != nil {
+			return fmt.Errorf("query api key groups: %w", err)
+		}
+		for _, g := range groups {
+			groupMap[g.ID] = groupEntityToService(g)
+		}
+	}
+	for i := range keys {
+		gids := groupIDsByKey[keys[i].ID]
+		if len(gids) == 0 && keys[i].GroupID != nil {
+			gids = []int64{*keys[i].GroupID}
+		}
+		keys[i].GroupIDs = append([]int64(nil), gids...)
+		if len(gids) > 0 {
+			primary := gids[0]
+			keys[i].GroupID = &primary
+			keys[i].Group = groupMap[primary]
+			keys[i].Groups = make([]service.Group, 0, len(gids))
+			for _, gid := range gids {
+				if g := groupMap[gid]; g != nil {
+					keys[i].Groups = append(keys[i].Groups, *g)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+type pqInt64Array []int64
+
+func (a pqInt64Array) Value() (driver.Value, error) {
+	if len(a) == 0 {
+		return "{}", nil
+	}
+	parts := make([]string, 0, len(a))
+	for _, v := range a {
+		parts = append(parts, fmt.Sprintf("%d", v))
+	}
+	return "{" + strings.Join(parts, ",") + "}", nil
 }
 
 func userEntityToService(u *dbent.User) *service.User {
