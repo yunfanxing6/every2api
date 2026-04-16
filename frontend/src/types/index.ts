@@ -366,7 +366,7 @@ export interface PaginationConfig {
 
 // ==================== API Key & Group Types ====================
 
-export type GroupPlatform = 'anthropic' | 'openai' | 'grok' | 'gemini' | 'antigravity' | 'sora'
+export type GroupPlatform = 'anthropic' | 'openai' | 'grok' | 'qwen' | 'gemini' | 'antigravity' | 'sora'
 
 export type SubscriptionType = 'standard' | 'subscription'
 
@@ -390,6 +390,10 @@ export interface Group {
   grok_output_price_per_mtok: number | null
   grok_image_price_1k: number | null
   grok_image_price_2k: number | null
+  qwen_input_price_per_mtok: number | null
+  qwen_output_price_per_mtok: number | null
+  qwen_image_price_1k: number | null
+  qwen_image_price_2k: number | null
   grok_video_price_5s: number | null
   grok_video_price_10s: number | null
   grok_video_price_15s: number | null
@@ -442,6 +446,7 @@ export interface ApiKey {
   key: string
   name: string
   group_id: number | null
+  group_ids: number[]
   status: 'active' | 'inactive' | 'quota_exhausted' | 'expired'
   ip_whitelist: string[]
   ip_blacklist: string[]
@@ -452,6 +457,7 @@ export interface ApiKey {
   created_at: string
   updated_at: string
   group?: Group
+  groups?: Group[]
   rate_limit_5h: number
   rate_limit_1d: number
   rate_limit_7d: number
@@ -469,6 +475,7 @@ export interface ApiKey {
 export interface CreateApiKeyRequest {
   name: string
   group_id?: number | null
+  group_ids?: number[]
   custom_key?: string // Optional custom API Key
   ip_whitelist?: string[]
   ip_blacklist?: string[]
@@ -482,6 +489,7 @@ export interface CreateApiKeyRequest {
 export interface UpdateApiKeyRequest {
   name?: string
   group_id?: number | null
+  group_ids?: number[]
   status?: 'active' | 'inactive'
   ip_whitelist?: string[]
   ip_blacklist?: string[]
@@ -511,6 +519,10 @@ export interface CreateGroupRequest {
   grok_output_price_per_mtok?: number | null
   grok_image_price_1k?: number | null
   grok_image_price_2k?: number | null
+  qwen_input_price_per_mtok?: number | null
+  qwen_output_price_per_mtok?: number | null
+  qwen_image_price_1k?: number | null
+  qwen_image_price_2k?: number | null
   grok_video_price_5s?: number | null
   grok_video_price_10s?: number | null
   grok_video_price_15s?: number | null
@@ -548,6 +560,10 @@ export interface UpdateGroupRequest {
   grok_output_price_per_mtok?: number | null
   grok_image_price_1k?: number | null
   grok_image_price_2k?: number | null
+  qwen_input_price_per_mtok?: number | null
+  qwen_output_price_per_mtok?: number | null
+  qwen_image_price_1k?: number | null
+  qwen_image_price_2k?: number | null
   grok_video_price_5s?: number | null
   grok_video_price_10s?: number | null
   grok_video_price_15s?: number | null
@@ -568,7 +584,7 @@ export interface UpdateGroupRequest {
 
 // ==================== Account & Proxy Types ====================
 
-export type AccountPlatform = 'anthropic' | 'openai' | 'grok' | 'gemini' | 'antigravity' | 'sora'
+export type AccountPlatform = 'anthropic' | 'openai' | 'grok' | 'qwen' | 'gemini' | 'antigravity' | 'sora'
 export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock'
 export type OAuthAddMethod = 'oauth' | 'setup-token'
 export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
