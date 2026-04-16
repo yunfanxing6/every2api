@@ -180,5 +180,5 @@ func getGroupPlatform(c *gin.Context) string {
 }
 
 func isOpenAICompatibleGroupPlatform(platform string) bool {
-	return platform == service.PlatformOpenAI || platform == service.PlatformGrok
+	return platform == service.PlatformOpenAI || platform == service.PlatformGrok || platform == service.PlatformQwen
 }

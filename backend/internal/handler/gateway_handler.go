@@ -52,6 +52,7 @@ type GatewayHandler struct {
 	maxAccountSwitchesGemini  int
 	cfg                       *config.Config
 	settingService            *service.SettingService
+	any2apiClient             *service.Any2APIClient
 }
 
 func lookupOpenAICompatibleDisplayName(platform, modelID string) string {
@@ -72,6 +73,24 @@ func lookupOpenAICompatibleDisplayName(platform, modelID string) string {
 	return modelID
 }
 
+func inferPlatformFromModelID(modelID string) string {
+	lowered := strings.ToLower(strings.TrimSpace(modelID))
+	switch {
+	case strings.HasPrefix(lowered, "claude"):
+		return service.PlatformAnthropic
+	case strings.HasPrefix(lowered, "gemini"):
+		return service.PlatformGemini
+	case strings.HasPrefix(lowered, "grok"):
+		return service.PlatformGrok
+	case strings.HasPrefix(lowered, "qwen"):
+		return service.PlatformQwen
+	case strings.HasPrefix(lowered, "gpt"), strings.HasPrefix(lowered, "o1"), strings.HasPrefix(lowered, "o3"), strings.HasPrefix(lowered, "o4"):
+		return service.PlatformOpenAI
+	default:
+		return ""
+	}
+}
+
 // NewGatewayHandler creates a new GatewayHandler
 func NewGatewayHandler(
 	gatewayService *service.GatewayService,
@@ -85,6 +104,7 @@ func NewGatewayHandler(
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	userMsgQueueService *service.UserMessageQueueService,
+	any2apiClient *service.Any2APIClient,
 	cfg *config.Config,
 	settingService *service.SettingService,
 ) *GatewayHandler {
@@ -123,6 +143,7 @@ func NewGatewayHandler(
 		maxAccountSwitchesGemini:  maxAccountSwitchesGemini,
 		cfg:                       cfg,
 		settingService:            settingService,
+		any2apiClient:             any2apiClient,
 	}
 }
 
@@ -867,58 +888,110 @@ func (h *GatewayHandler) Messages(c *gin.Context) {
 func (h *GatewayHandler) Models(c *gin.Context) {
 	apiKey, _ := middleware2.GetAPIKeyFromContext(c)
 
-	var groupID *int64
-	var platform string
-
-	if apiKey != nil && apiKey.Group != nil {
-		groupID = &apiKey.Group.ID
-		platform = apiKey.Group.Platform
+	groupIDs := make([]int64, 0)
+	platforms := make(map[string]struct{})
+	if apiKey != nil {
+		groupIDs = apiKey.EffectiveGroupIDs()
+		for i := range apiKey.Groups {
+			platform := strings.TrimSpace(apiKey.Groups[i].Platform)
+			if platform != "" {
+				platforms[platform] = struct{}{}
+			}
+		}
+		if apiKey.Group != nil && strings.TrimSpace(apiKey.Group.Platform) != "" {
+			platforms[strings.TrimSpace(apiKey.Group.Platform)] = struct{}{}
+		}
 	}
 	if forcedPlatform, ok := middleware2.GetForcePlatformFromContext(c); ok && strings.TrimSpace(forcedPlatform) != "" {
-		platform = forcedPlatform
+		platforms = map[string]struct{}{strings.TrimSpace(forcedPlatform): {}}
 	}
 
-	// Get available models from account configurations (without platform filter)
-	availableModels := h.gatewayService.GetAvailableModels(c.Request.Context(), groupID, "")
-
-	if len(availableModels) > 0 {
-		// Build model list from whitelist
-		models := make([]claude.Model, 0, len(availableModels))
-		for _, modelID := range availableModels {
-			models = append(models, claude.Model{
-				ID:          modelID,
-				Type:        "model",
-				DisplayName: lookupOpenAICompatibleDisplayName(platform, modelID),
-				CreatedAt:   "2024-01-01T00:00:00Z",
-			})
+	models := make([]claude.Model, 0)
+	seen := make(map[string]struct{})
+	appendModel := func(modelID string, platform string, displayName string) {
+		modelID = strings.TrimSpace(modelID)
+		if modelID == "" {
+			return
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data":   models,
+		if _, exists := seen[modelID]; exists {
+			return
+		}
+		seen[modelID] = struct{}{}
+		models = append(models, claude.Model{
+			ID:          modelID,
+			Type:        "model",
+			DisplayName: firstNonEmpty(displayName, lookupOpenAICompatibleDisplayName(platform, modelID), modelID),
+			CreatedAt:   "2024-01-01T00:00:00Z",
 		})
-		return
 	}
 
-	// Fallback to default models
-	if platform == service.PlatformGrok {
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data":   grok.DefaultModels,
-		})
-		return
+	for _, groupID := range groupIDs {
+		gid := groupID
+		availableModels := h.gatewayService.GetAvailableModels(c.Request.Context(), &gid, "")
+		if len(availableModels) == 0 {
+			continue
+		}
+		platform := ""
+		if apiKey != nil {
+			for i := range apiKey.Groups {
+				if apiKey.Groups[i].ID == groupID {
+					platform = apiKey.Groups[i].Platform
+					break
+				}
+			}
+		}
+		for _, modelID := range availableModels {
+			appendModel(modelID, platform, "")
+		}
 	}
 
-	if platform == service.PlatformOpenAI {
-		c.JSON(http.StatusOK, gin.H{
-			"object": "list",
-			"data":   openai.DefaultModels,
-		})
-		return
+	if len(models) == 0 {
+		for platform := range platforms {
+			switch platform {
+			case service.PlatformGrok:
+				for _, model := range grok.DefaultModels {
+					appendModel(model.ID, platform, model.DisplayName)
+				}
+			case service.PlatformOpenAI:
+				for _, model := range openai.DefaultModels {
+					appendModel(model.ID, platform, model.DisplayName)
+				}
+			case service.PlatformAnthropic:
+				for _, model := range claude.DefaultModels {
+					appendModel(model.ID, platform, model.DisplayName)
+				}
+			}
+		}
+	}
+
+	needsAny2APIModels := false
+	for platform := range platforms {
+		if platform == service.PlatformGrok || platform == service.PlatformQwen {
+			needsAny2APIModels = true
+			break
+		}
+	}
+	if needsAny2APIModels && h.any2apiClient != nil && h.any2apiClient.Enabled() {
+		if any2apiModels, err := h.any2apiClient.ListModels(c.Request.Context()); err == nil {
+			for _, model := range any2apiModels {
+				platform := inferPlatformFromModelID(model.ID)
+				if _, ok := platforms[platform]; !ok {
+					continue
+				}
+				appendModel(model.ID, platform, firstNonEmpty(model.DisplayName, model.Name, model.ID))
+			}
+		}
+	}
+
+	if len(models) == 0 {
+		for _, model := range claude.DefaultModels {
+			appendModel(model.ID, service.PlatformAnthropic, model.DisplayName)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
-		"data":   claude.DefaultModels,
+		"data":   models,
 	})
 }
 
