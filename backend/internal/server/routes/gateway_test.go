@@ -48,3 +48,17 @@ func TestGatewayRoutesOpenAIResponsesCompactPathIsRegistered(t *testing.T) {
 		require.NotEqual(t, http.StatusNotFound, w.Code, "path=%s should hit OpenAI responses handler", path)
 	}
 }
+
+func TestUsesOpenAIGatewayForOpenAICompat(t *testing.T) {
+	require.True(t, usesOpenAIGatewayForOpenAICompat("openai"))
+	require.True(t, usesOpenAIGatewayForOpenAICompat("grok"))
+	require.True(t, usesOpenAIGatewayForOpenAICompat("qwen"))
+	require.False(t, usesOpenAIGatewayForOpenAICompat("anthropic"))
+	require.False(t, usesOpenAIGatewayForOpenAICompat("gemini"))
+}
+
+func TestUsesOpenAIGatewayForMessages(t *testing.T) {
+	require.True(t, usesOpenAIGatewayForMessages("openai"))
+	require.False(t, usesOpenAIGatewayForMessages("grok"))
+	require.False(t, usesOpenAIGatewayForMessages("qwen"))
+}

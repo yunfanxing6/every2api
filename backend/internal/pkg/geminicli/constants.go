@@ -1,7 +1,11 @@
 // Package geminicli provides helpers for interacting with Gemini CLI tools.
 package geminicli
 
-import "time"
+import (
+	"os"
+	"strings"
+	"time"
+)
 
 const (
 	AIStudioBaseURL  = "https://generativelanguage.googleapis.com"
@@ -35,7 +39,7 @@ const (
 	// GeminiCLIRedirectURI is the redirect URI used by Gemini CLI for Code Assist OAuth.
 	GeminiCLIRedirectURI = "https://codeassist.google.com/authcode"
 
-	// Gemini CLI 内置 OAuth 凭据通过环境变量注入，仓库本身不再内置第三方客户端信息。
+	// GeminiCLIOAuthClientIDEnv is the environment variable name for the built-in client id.
 	GeminiCLIOAuthClientIDEnv = "GEMINI_CLI_OAUTH_CLIENT_ID"
 
 	// GeminiCLIOAuthClientSecretEnv is the environment variable name for the built-in client secret.
@@ -48,6 +52,6 @@ const (
 )
 
 var (
-	GeminiCLIOAuthClientID     = ""
-	GeminiCLIOAuthClientSecret = ""
+	GeminiCLIOAuthClientID     = strings.TrimSpace(os.Getenv(GeminiCLIOAuthClientIDEnv))
+	GeminiCLIOAuthClientSecret = strings.TrimSpace(os.Getenv(GeminiCLIOAuthClientSecretEnv))
 )

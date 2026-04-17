@@ -225,11 +225,6 @@ func (s *BillingService) initFallbackPricing() {
 		LongContextInputMultiplier:     openAIGPT54LongContextInputMultiplier,
 		LongContextOutputMultiplier:    openAIGPT54LongContextOutputMultiplier,
 	}
-	// Grok 4.20 Beta 暂按 GPT-5.4 兜底计费，后续可按 xAI 真实价格独立调整。
-	s.fallbackPrices["grok-4.20-beta"] = s.fallbackPrices["gpt-5.4"]
-	s.fallbackPrices["grok-4.20-0309-non-reasoning"] = s.fallbackPrices["gpt-5.4"]
-	s.fallbackPrices["grok-4.20-0309"] = s.fallbackPrices["gpt-5.4"]
-	s.fallbackPrices["grok-4.20-0309-reasoning"] = s.fallbackPrices["gpt-5.4"]
 	s.fallbackPrices["gpt-5.4-mini"] = &ModelPricing{
 		InputPricePerToken:     7.5e-7,
 		OutputPricePerToken:    4.5e-6,
@@ -309,12 +304,6 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	}
 	if strings.Contains(modelLower, "gemini-3.1-pro") || strings.Contains(modelLower, "gemini-3-1-pro") {
 		return s.fallbackPrices["gemini-3.1-pro"]
-	}
-	if strings.Contains(modelLower, "grok-4.20-0309") {
-		return s.fallbackPrices["grok-4.20-0309"]
-	}
-	if strings.Contains(modelLower, "grok-4.20-beta") {
-		return s.fallbackPrices["grok-4.20-beta"]
 	}
 
 	// OpenAI 仅匹配已知 GPT-5/Codex 族，避免未知 OpenAI 型号误计价。
@@ -819,24 +808,6 @@ type ImagePriceConfig struct {
 	Price4K *float64 // 4K 尺寸价格（nil 表示使用默认值）
 }
 
-type GrokPriceConfig struct {
-	InputPricePerMTok          *float64
-	OutputPricePerMTok         *float64
-	ImagePrice1K               *float64
-	ImagePrice2K               *float64
-	VideoPrice5S               *float64
-	VideoPrice10S              *float64
-	VideoPrice15S              *float64
-	VideoHighQualityMultiplier *float64
-}
-
-func pricePerMTokToPerToken(price *float64) float64 {
-	if price == nil || *price <= 0 {
-		return 0
-	}
-	return *price / 1_000_000
-}
-
 // CalculateImageCost 计算图片生成费用
 // model: 请求的模型名称（用于获取 LiteLLM 默认价格）
 // imageSize: 图片尺寸 "1K", "2K", "4K"
@@ -917,116 +888,4 @@ func (s *BillingService) getDefaultImagePrice(model string, imageSize string) fl
 	}
 
 	return basePrice
-}
-
-func (s *BillingService) CalculateGrokTextCost(model string, tokens UsageTokens, groupConfig *GrokPriceConfig, rateMultiplier float64) (*CostBreakdown, error) {
-	pricing, err := s.GetModelPricing(model)
-	if err != nil {
-		pricing = &ModelPricing{}
-	}
-	inputPricePerToken := pricing.InputPricePerToken
-	outputPricePerToken := pricing.OutputPricePerToken
-	cacheCreationPricePerToken := pricing.CacheCreationPricePerToken
-	cacheReadPricePerToken := pricing.CacheReadPricePerToken
-	if groupConfig != nil {
-		if override := pricePerMTokToPerToken(groupConfig.InputPricePerMTok); override > 0 {
-			inputPricePerToken = override
-			if cacheCreationPricePerToken <= 0 {
-				cacheCreationPricePerToken = override
-			}
-			if cacheReadPricePerToken <= 0 {
-				cacheReadPricePerToken = override * 0.1
-			}
-		}
-		if override := pricePerMTokToPerToken(groupConfig.OutputPricePerMTok); override > 0 {
-			outputPricePerToken = override
-		}
-	}
-	if rateMultiplier <= 0 {
-		rateMultiplier = 1.0
-	}
-	breakdown := &CostBreakdown{
-		InputCost:         float64(tokens.InputTokens) * inputPricePerToken,
-		OutputCost:        float64(tokens.OutputTokens) * outputPricePerToken,
-		CacheCreationCost: float64(tokens.CacheCreationTokens) * cacheCreationPricePerToken,
-		CacheReadCost:     float64(tokens.CacheReadTokens) * cacheReadPricePerToken,
-	}
-	breakdown.TotalCost = breakdown.InputCost + breakdown.OutputCost + breakdown.CacheCreationCost + breakdown.CacheReadCost
-	breakdown.ActualCost = breakdown.TotalCost * rateMultiplier
-	breakdown.BillingMode = string(BillingModeToken)
-	return breakdown, nil
-}
-
-func (s *BillingService) CalculateGrokVideoCost(seconds int, quality string, groupConfig *GrokPriceConfig, rateMultiplier float64) *CostBreakdown {
-	unitPrice := 0.0
-	if groupConfig != nil {
-		switch {
-		case seconds >= 15:
-			if groupConfig.VideoPrice15S != nil {
-				unitPrice = *groupConfig.VideoPrice15S
-			}
-		case seconds >= 10:
-			if groupConfig.VideoPrice10S != nil {
-				unitPrice = *groupConfig.VideoPrice10S
-			}
-		default:
-			if groupConfig.VideoPrice5S != nil {
-				unitPrice = *groupConfig.VideoPrice5S
-			}
-		}
-		if strings.EqualFold(strings.TrimSpace(quality), "high") {
-			multiplier := 1.5
-			if groupConfig.VideoHighQualityMultiplier != nil && *groupConfig.VideoHighQualityMultiplier > 0 {
-				multiplier = *groupConfig.VideoHighQualityMultiplier
-			}
-			unitPrice *= multiplier
-		}
-	}
-	if unitPrice <= 0 {
-		switch {
-		case seconds >= 15:
-			unitPrice = 0.60
-		case seconds >= 10:
-			unitPrice = 0.40
-		default:
-			unitPrice = 0.25
-		}
-		if strings.EqualFold(strings.TrimSpace(quality), "high") {
-			unitPrice *= 1.5
-		}
-	}
-	if rateMultiplier <= 0 {
-		rateMultiplier = 1.0
-	}
-	return &CostBreakdown{
-		TotalCost:   unitPrice,
-		ActualCost:  unitPrice * rateMultiplier,
-		BillingMode: string(BillingModePerRequest),
-	}
-}
-
-func (s *BillingService) CalculateOpenAICompatibleVideoCost(model string, seconds int, quality string, rateMultiplier float64) *CostBreakdown {
-	unitPrice := 0.0
-	modelLower := strings.ToLower(strings.TrimSpace(model))
-	if strings.Contains(modelLower, "grok-imagine-1.0-video") {
-		switch {
-		case seconds >= 15:
-			unitPrice = 0.60
-		case seconds >= 10:
-			unitPrice = 0.40
-		default:
-			unitPrice = 0.25
-		}
-		if strings.EqualFold(strings.TrimSpace(quality), "high") {
-			unitPrice *= 1.5
-		}
-	}
-	if rateMultiplier <= 0 {
-		rateMultiplier = 1.0
-	}
-	return &CostBreakdown{
-		TotalCost:   unitPrice,
-		ActualCost:  unitPrice * rateMultiplier,
-		BillingMode: string(BillingModePerRequest),
-	}
 }

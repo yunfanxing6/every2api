@@ -29,11 +29,6 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
 		return
 	}
-	gatewayPlatform := service.PlatformOpenAI
-	if apiKey.Group != nil && apiKey.Group.Platform != "" {
-		gatewayPlatform = apiKey.Group.Platform
-	}
-	c.Request = c.Request.WithContext(service.WithOpenAICompatiblePlatform(c.Request.Context(), gatewayPlatform))
 
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {
@@ -108,6 +103,17 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 		reqLog.Info("openai_chat_completions.billing_eligibility_check_failed", zap.Error(err))
 		status, code, message := billingErrorDetails(err)
 		h.handleStreamingAwareError(c, status, code, message, streamStarted)
+		return
+	}
+
+	if h.any2apiClient != nil && h.any2apiClient.HandlesModel(reqModel) {
+		proxyResult, err := h.any2apiClient.ProxyRequest(c.Request.Context(), c, http.MethodPost, "/v1/chat/completions", body)
+		if err != nil {
+			reqLog.Warn("openai_chat_completions.any2api_proxy_failed", zap.Error(err))
+			h.handleStreamingAwareError(c, http.StatusBadGateway, "api_error", "Any2API proxy request failed", streamStarted)
+		} else {
+			h.recordAny2APIProxyUsage(c, apiKey, subscription, reqModel, proxyResult, GetInboundEndpoint(c), "/v1/chat/completions")
+		}
 		return
 	}
 
@@ -269,16 +275,17 @@ func (h *OpenAIGatewayHandler) ChatCompletions(c *gin.Context) {
 
 		h.submitUsageRecordTask(func(ctx context.Context) {
 			if err := h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
-				Result:           result,
-				APIKey:           apiKey,
-				User:             apiKey.User,
-				Account:          account,
-				Subscription:     subscription,
-				InboundEndpoint:  GetInboundEndpoint(c),
-				UpstreamEndpoint: GetUpstreamEndpoint(c, account.Platform),
-				UserAgent:        userAgent,
-				IPAddress:        clientIP,
-				APIKeyService:    h.apiKeyService,
+				Result:             result,
+				APIKey:             apiKey,
+				User:               apiKey.User,
+				Account:            account,
+				Subscription:       subscription,
+				InboundEndpoint:    GetInboundEndpoint(c),
+				UpstreamEndpoint:   GetUpstreamEndpoint(c, account.Platform),
+				UserAgent:          userAgent,
+				IPAddress:          clientIP,
+				APIKeyService:      h.apiKeyService,
+				ChannelUsageFields: channelMapping.ToUsageFields(reqModel, result.UpstreamModel),
 			}); err != nil {
 				logger.L().With(
 					zap.String("component", "handler.openai_gateway.chat_completions"),

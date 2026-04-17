@@ -43,15 +43,13 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import GroupBadge from './GroupBadge.vue'
-import type { AdminGroup, Group, GroupPlatform } from '@/types'
-
-type SelectableGroup = (Group | AdminGroup) & { account_count?: number }
+import type { AdminGroup, GroupPlatform } from '@/types'
 
 const { t } = useI18n()
 
 interface Props {
   modelValue: number[]
-  groups: SelectableGroup[]
+  groups: AdminGroup[]
   platform?: GroupPlatform // Optional platform filter
   mixedScheduling?: boolean // For antigravity accounts: allow anthropic/gemini groups
 }

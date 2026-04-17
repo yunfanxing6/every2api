@@ -16,10 +16,12 @@ import (
 
 type userUsageRepoCapture struct {
 	service.UsageLogRepository
+	listParams  pagination.PaginationParams
 	listFilters usagestats.UsageLogFilters
 }
 
 func (s *userUsageRepoCapture) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters usagestats.UsageLogFilters) ([]service.UsageLog, *pagination.PaginationResult, error) {
+	s.listParams = params
 	s.listFilters = filters
 	return []service.UsageLog{}, &pagination.PaginationResult{
 		Total:    0,
@@ -31,7 +33,7 @@ func (s *userUsageRepoCapture) ListWithFilters(ctx context.Context, params pagin
 
 func newUserUsageRequestTypeTestRouter(repo *userUsageRepoCapture) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	usageSvc := service.NewUsageService(repo, nil, nil, nil, nil, nil)
+	usageSvc := service.NewUsageService(repo, nil, nil, nil)
 	handler := NewUsageHandler(usageSvc, nil)
 	router := gin.New()
 	router.Use(func(c *gin.Context) {

@@ -320,28 +320,6 @@ func TestAccountGetMappedModel(t *testing.T) {
 	}
 }
 
-func TestAccountGetModelMapping_UsesDefaultGrokMapping(t *testing.T) {
-	account := &Account{Platform: PlatformGrok}
-	mapping := account.GetModelMapping()
-	if mapping["grok-4.20-0309"] != "grok-4.20-0309" {
-		t.Fatalf("expected default grok text model mapping, got %#v", mapping)
-	}
-	if mapping["grok-imagine-image-lite"] != "grok-imagine-image-lite" {
-		t.Fatalf("expected grok image model mapping, got %#v", mapping)
-	}
-}
-
-func TestAccountGetOpenAIBaseURL_GrokRequiresExplicitBaseURL(t *testing.T) {
-	account := &Account{Platform: PlatformGrok, Type: AccountTypeAPIKey}
-	if got := account.GetOpenAIBaseURL(); got != "" {
-		t.Fatalf("expected empty base url for grok account without explicit base_url, got %q", got)
-	}
-	account.Credentials = map[string]any{"base_url": "https://grok.example.com/v1"}
-	if got := account.GetOpenAIBaseURL(); got != "https://grok.example.com/v1" {
-		t.Fatalf("expected explicit grok base url to be preserved, got %q", got)
-	}
-}
-
 func TestAccountResolveMappedModel(t *testing.T) {
 	tests := []struct {
 		name           string

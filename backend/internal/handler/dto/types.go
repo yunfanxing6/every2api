@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/domain"
+)
 
 type User struct {
 	ID            int64     `json:"id"`
@@ -13,6 +17,13 @@ type User struct {
 	AllowedGroups []int64   `json:"allowed_groups"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
+
+	// 余额不足通知
+	BalanceNotifyEnabled       bool               `json:"balance_notify_enabled"`
+	BalanceNotifyThresholdType string             `json:"balance_notify_threshold_type"`
+	BalanceNotifyThreshold     *float64           `json:"balance_notify_threshold"`
+	BalanceNotifyExtraEmails   []NotifyEmailEntry `json:"balance_notify_extra_emails"`
+	TotalRecharged             float64            `json:"total_recharged"`
 
 	APIKeys       []APIKey           `json:"api_keys,omitempty"`
 	Subscriptions []UserSubscription `json:"subscriptions,omitempty"`
@@ -35,6 +46,7 @@ type APIKey struct {
 	Key         string     `json:"key"`
 	Name        string     `json:"name"`
 	GroupID     *int64     `json:"group_id"`
+	GroupIDs    []int64    `json:"group_ids,omitempty"`
 	Status      string     `json:"status"`
 	IPWhitelist []string   `json:"ip_whitelist"`
 	IPBlacklist []string   `json:"ip_blacklist"`
@@ -78,17 +90,9 @@ type Group struct {
 	MonthlyLimitUSD  *float64 `json:"monthly_limit_usd"`
 
 	// 图片生成计费配置（仅 antigravity 平台使用）
-	ImagePrice1K                   *float64 `json:"image_price_1k"`
-	ImagePrice2K                   *float64 `json:"image_price_2k"`
-	ImagePrice4K                   *float64 `json:"image_price_4k"`
-	GrokInputPricePerMTok          *float64 `json:"grok_input_price_per_mtok"`
-	GrokOutputPricePerMTok         *float64 `json:"grok_output_price_per_mtok"`
-	GrokImagePrice1K               *float64 `json:"grok_image_price_1k"`
-	GrokImagePrice2K               *float64 `json:"grok_image_price_2k"`
-	GrokVideoPrice5S               *float64 `json:"grok_video_price_5s"`
-	GrokVideoPrice10S              *float64 `json:"grok_video_price_10s"`
-	GrokVideoPrice15S              *float64 `json:"grok_video_price_15s"`
-	GrokVideoHighQualityMultiplier *float64 `json:"grok_video_high_quality_multiplier"`
+	ImagePrice1K *float64 `json:"image_price_1k"`
+	ImagePrice2K *float64 `json:"image_price_2k"`
+	ImagePrice4K *float64 `json:"image_price_4k"`
 
 	// Claude Code 客户端限制
 	ClaudeCodeOnly  bool   `json:"claude_code_only"`
@@ -120,7 +124,8 @@ type AdminGroup struct {
 	MCPXMLInject bool `json:"mcp_xml_inject"`
 
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
-	DefaultMappedModel string `json:"default_mapped_model"`
+	DefaultMappedModel          string                                   `json:"default_mapped_model"`
+	MessagesDispatchModelConfig domain.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
 
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes    []string       `json:"supported_model_scopes"`
@@ -220,6 +225,14 @@ type Account struct {
 	QuotaResetTimezone   *string `json:"quota_reset_timezone,omitempty"`
 	QuotaDailyResetAt    *string `json:"quota_daily_reset_at,omitempty"`
 	QuotaWeeklyResetAt   *string `json:"quota_weekly_reset_at,omitempty"`
+
+	// 配额通知配置
+	QuotaNotifyDailyEnabled    *bool    `json:"quota_notify_daily_enabled,omitempty"`
+	QuotaNotifyDailyThreshold  *float64 `json:"quota_notify_daily_threshold,omitempty"`
+	QuotaNotifyWeeklyEnabled   *bool    `json:"quota_notify_weekly_enabled,omitempty"`
+	QuotaNotifyWeeklyThreshold *float64 `json:"quota_notify_weekly_threshold,omitempty"`
+	QuotaNotifyTotalEnabled    *bool    `json:"quota_notify_total_enabled,omitempty"`
+	QuotaNotifyTotalThreshold  *float64 `json:"quota_notify_total_threshold,omitempty"`
 
 	Proxy         *Proxy         `json:"proxy,omitempty"`
 	AccountGroups []AccountGroup `json:"account_groups,omitempty"`
@@ -415,6 +428,8 @@ type AdminUsageLog struct {
 
 	// AccountRateMultiplier 账号计费倍率快照（nil 表示按 1.0 处理）
 	AccountRateMultiplier *float64 `json:"account_rate_multiplier"`
+	// AccountStatsCost 自定义定价规则计算的账号统计费用（nil 表示使用默认公式）
+	AccountStatsCost *float64 `json:"account_stats_cost,omitempty"`
 
 	// IPAddress 用户请求 IP（仅管理员可见）
 	IPAddress *string `json:"ip_address,omitempty"`

@@ -7,8 +7,9 @@ import (
 	"crypto/tls"
 	"encoding/hex"
 	"fmt"
-	"log"
+	"log/slog"
 	"math/big"
+	"net"
 	"net/smtp"
 	"net/url"
 	"strconv"
@@ -34,6 +35,11 @@ type EmailCache interface {
 	SetVerificationCode(ctx context.Context, email string, data *VerificationCodeData, ttl time.Duration) error
 	DeleteVerificationCode(ctx context.Context, email string) error
 
+	// Notify email verification code methods
+	GetNotifyVerifyCode(ctx context.Context, email string) (*VerificationCodeData, error)
+	SetNotifyVerifyCode(ctx context.Context, email string, data *VerificationCodeData, ttl time.Duration) error
+	DeleteNotifyVerifyCode(ctx context.Context, email string) error
+
 	// Password reset token methods
 	GetPasswordResetToken(ctx context.Context, email string) (*PasswordResetTokenData, error)
 	SetPasswordResetToken(ctx context.Context, email string, data *PasswordResetTokenData, ttl time.Duration) error
@@ -43,6 +49,10 @@ type EmailCache interface {
 	// Returns true if in cooldown period (email was sent recently)
 	IsPasswordResetEmailInCooldown(ctx context.Context, email string) bool
 	SetPasswordResetEmailCooldown(ctx context.Context, email string, ttl time.Duration) error
+
+	// Notify code rate limiting per user
+	IncrNotifyCodeUserRate(ctx context.Context, userID int64, window time.Duration) (int64, error)
+	GetNotifyCodeUserRate(ctx context.Context, userID int64) (int64, error)
 }
 
 // VerificationCodeData represents verification code data
@@ -50,6 +60,7 @@ type VerificationCodeData struct {
 	Code      string
 	Attempts  int
 	CreatedAt time.Time
+	ExpiresAt time.Time // absolute expiry; used to preserve remaining TTL when updating attempts
 }
 
 // PasswordResetTokenData represents password reset token data
@@ -146,11 +157,18 @@ func (s *EmailService) SendEmail(ctx context.Context, to, subject, body string) 
 	return s.SendEmailWithConfig(config, to, subject, body)
 }
 
+const smtpDialTimeout = 10 * time.Second
+const smtpIOTimeout = 20 * time.Second
+
 // SendEmailWithConfig 使用指定配置发送邮件
 func (s *EmailService) SendEmailWithConfig(config *SMTPConfig, to, subject, body string) error {
-	from := config.From
+	// Sanitize all SMTP header fields to prevent header injection (CR/LF removal).
+	to = sanitizeEmailHeader(to)
+	subject = sanitizeEmailHeader(subject)
+
+	from := sanitizeEmailHeader(config.From)
 	if config.FromName != "" {
-		from = fmt.Sprintf("%s <%s>", config.FromName, config.From)
+		from = fmt.Sprintf("%s <%s>", sanitizeEmailHeader(config.FromName), sanitizeEmailHeader(config.From))
 	}
 
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
@@ -163,7 +181,54 @@ func (s *EmailService) SendEmailWithConfig(config *SMTPConfig, to, subject, body
 		return s.sendMailTLS(addr, auth, config.From, to, []byte(msg), config.Host)
 	}
 
-	return smtp.SendMail(addr, auth, config.From, []string{to}, []byte(msg))
+	return s.sendMailPlain(addr, auth, config.From, to, []byte(msg), config.Host)
+}
+
+// sendMailPlain sends mail without TLS using a dialer with timeout.
+func (s *EmailService) sendMailPlain(addr string, auth smtp.Auth, from, to string, msg []byte, host string) error {
+	dialer := &net.Dialer{Timeout: smtpDialTimeout}
+	conn, err := dialer.Dial("tcp", addr)
+	if err != nil {
+		return fmt.Errorf("smtp dial: %w", err)
+	}
+	_ = conn.SetDeadline(time.Now().Add(smtpIOTimeout))
+	defer func() { _ = conn.Close() }()
+
+	client, err := smtp.NewClient(conn, host)
+	if err != nil {
+		return fmt.Errorf("new smtp client: %w", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	// Opportunistic STARTTLS: upgrade to encrypted connection if the server supports it.
+	// This mirrors the behavior of smtp.SendMail which we replaced for timeout support.
+	if ok, _ := client.Extension("STARTTLS"); ok {
+		if err = client.StartTLS(&tls.Config{ServerName: host, MinVersion: tls.VersionTLS12}); err != nil {
+			return fmt.Errorf("starttls: %w", err)
+		}
+	}
+
+	if err = client.Auth(auth); err != nil {
+		return fmt.Errorf("smtp auth: %w", err)
+	}
+	if err = client.Mail(from); err != nil {
+		return fmt.Errorf("smtp mail: %w", err)
+	}
+	if err = client.Rcpt(to); err != nil {
+		return fmt.Errorf("smtp rcpt: %w", err)
+	}
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("smtp data: %w", err)
+	}
+	if _, err = w.Write(msg); err != nil {
+		return fmt.Errorf("write msg: %w", err)
+	}
+	if err = w.Close(); err != nil {
+		return fmt.Errorf("close writer: %w", err)
+	}
+	_ = client.Quit()
+	return nil
 }
 
 // sendMailTLS 使用TLS发送邮件
@@ -174,10 +239,12 @@ func (s *EmailService) sendMailTLS(addr string, auth smtp.Auth, from, to string,
 		MinVersion: tls.VersionTLS12,
 	}
 
-	conn, err := tls.Dial("tcp", addr, tlsConfig)
+	dialer := &net.Dialer{Timeout: smtpDialTimeout}
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, tlsConfig)
 	if err != nil {
 		return fmt.Errorf("tls dial: %w", err)
 	}
+	_ = conn.SetDeadline(time.Now().Add(smtpIOTimeout))
 	defer func() { _ = conn.Close() }()
 
 	client, err := smtp.NewClient(conn, host)
@@ -254,6 +321,7 @@ func (s *EmailService) SendVerifyCode(ctx context.Context, email, siteName strin
 		Code:      code,
 		Attempts:  0,
 		CreatedAt: time.Now(),
+		ExpiresAt: time.Now().Add(verifyCodeTTL),
 	}
 	if err := s.cache.SetVerificationCode(ctx, email, data, verifyCodeTTL); err != nil {
 		return fmt.Errorf("save verify code: %w", err)
@@ -286,8 +354,12 @@ func (s *EmailService) VerifyCode(ctx context.Context, email, code string) error
 	// 验证码不匹配 (constant-time comparison to prevent timing attacks)
 	if subtle.ConstantTimeCompare([]byte(data.Code), []byte(code)) != 1 {
 		data.Attempts++
-		if err := s.cache.SetVerificationCode(ctx, email, data, verifyCodeTTL); err != nil {
-			log.Printf("[Email] Failed to update verification attempt count: %v", err)
+		remaining := time.Until(data.ExpiresAt)
+		if remaining <= 0 {
+			return ErrInvalidVerifyCode
+		}
+		if err := s.cache.SetVerificationCode(ctx, email, data, remaining); err != nil {
+			slog.Error("failed to update verification attempt count", "email", email, "error", err)
 		}
 		if data.Attempts >= maxVerifyCodeAttempts {
 			return ErrVerifyCodeMaxAttempts
@@ -297,7 +369,7 @@ func (s *EmailService) VerifyCode(ctx context.Context, email, code string) error
 
 	// 验证成功，删除验证码
 	if err := s.cache.DeleteVerificationCode(ctx, email); err != nil {
-		log.Printf("[Email] Failed to delete verification code after success: %v", err)
+		slog.Error("failed to delete verification code after success", "email", email, "error", err)
 	}
 	return nil
 }
@@ -447,7 +519,7 @@ func (s *EmailService) SendPasswordResetEmail(ctx context.Context, email, siteNa
 func (s *EmailService) SendPasswordResetEmailWithCooldown(ctx context.Context, email, siteName, resetURL string) error {
 	// Check email cooldown to prevent email bombing
 	if s.cache.IsPasswordResetEmailInCooldown(ctx, email) {
-		log.Printf("[Email] Password reset email skipped (cooldown): %s", email)
+		slog.Info("password reset email skipped due to cooldown", "email", email)
 		return nil // Silent success to prevent revealing cooldown to attackers
 	}
 
@@ -458,27 +530,9 @@ func (s *EmailService) SendPasswordResetEmailWithCooldown(ctx context.Context, e
 
 	// Set cooldown marker (Redis TTL handles expiration)
 	if err := s.cache.SetPasswordResetEmailCooldown(ctx, email, passwordResetEmailCooldown); err != nil {
-		log.Printf("[Email] Failed to set password reset cooldown for %s: %v", email, err)
+		slog.Error("failed to set password reset cooldown", "email", email, "error", err)
 	}
 
-	return nil
-}
-
-func (s *EmailService) SendLowBalanceAlert(ctx context.Context, email, siteName, siteURL string, currentBalance float64) error {
-	subject := fmt.Sprintf("[%s] Low Balance Reminder", siteName)
-	body := s.buildBalanceAlertEmailBody(siteName, siteURL, currentBalance, false)
-	if err := s.SendEmail(ctx, email, subject, body); err != nil {
-		return fmt.Errorf("send low balance email: %w", err)
-	}
-	return nil
-}
-
-func (s *EmailService) SendBalanceDepletedAlert(ctx context.Context, email, siteName, siteURL string, currentBalance float64) error {
-	subject := fmt.Sprintf("[%s] Balance Exhausted", siteName)
-	body := s.buildBalanceAlertEmailBody(siteName, siteURL, currentBalance, true)
-	if err := s.SendEmail(ctx, email, subject, body); err != nil {
-		return fmt.Errorf("send balance exhausted email: %w", err)
-	}
 	return nil
 }
 
@@ -506,7 +560,7 @@ func (s *EmailService) ConsumePasswordResetToken(ctx context.Context, email, tok
 
 	// Delete after verification (one-time use)
 	if err := s.cache.DeletePasswordResetToken(ctx, email); err != nil {
-		log.Printf("[Email] Failed to delete password reset token after consumption: %v", err)
+		slog.Error("failed to delete password reset token after consumption", "email", email, "error", err)
 	}
 	return nil
 }
@@ -557,66 +611,4 @@ func (s *EmailService) buildPasswordResetEmailBody(resetURL, siteName string) st
 </body>
 </html>
 `, siteName, resetURL, resetURL)
-}
-
-func (s *EmailService) buildBalanceAlertEmailBody(siteName, siteURL string, currentBalance float64, exhausted bool) string {
-	title := "Low Balance Reminder"
-	headline := "Your balance is running low"
-	message := "Your available balance has dropped below $5.00. Please recharge in time to avoid service interruption."
-	buttonText := "Open Dashboard"
-	badgeClass := "warning"
-	if exhausted {
-		title = "Balance Exhausted"
-		headline = "Your balance has been exhausted"
-		message = "Your available balance has reached $0.00 or below. Please recharge before sending new requests."
-		buttonText = "Recharge Now"
-		badgeClass = "danger"
-	}
-	balanceText := fmt.Sprintf("$%.2f", currentBalance)
-	return fmt.Sprintf(`
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; background-color: #eef3f8; margin: 0; padding: 24px; }
-        .container { max-width: 640px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12); }
-        .header { background: linear-gradient(135deg, #0f172a 0%%, #1d4ed8 100%%); color: white; padding: 28px 32px; }
-        .header h1 { margin: 0; font-size: 24px; }
-        .content { padding: 32px; color: #1f2937; }
-        .content h2 { margin-top: 0; font-size: 22px; }
-        .status-card { margin: 24px 0; padding: 20px 24px; border-radius: 14px; background-color: #f8fafc; border: 1px solid #dbeafe; }
-        .status-label { color: #64748b; font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; }
-        .status-value { margin-top: 8px; font-size: 34px; font-weight: 700; color: #0f172a; }
-        .warning { color: #b45309; }
-        .danger { color: #b91c1c; }
-        .button { display: inline-block; margin-top: 8px; background: #0f172a; color: #ffffff !important; text-decoration: none; padding: 14px 24px; border-radius: 999px; font-weight: 600; }
-        .link-fallback { margin-top: 24px; color: #64748b; font-size: 12px; word-break: break-all; }
-        .footer { border-top: 1px solid #e5e7eb; padding: 20px 32px; color: #94a3b8; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>%s</h1>
-        </div>
-        <div class="content">
-            <h2>%s</h2>
-            <p>%s</p>
-            <div class="status-card">
-                <div class="status-label">Current balance</div>
-                <div class="status-value %s">%s</div>
-            </div>
-            <a href="%s" class="button">%s</a>
-            <div class="link-fallback">
-                <p>Website: %s</p>
-            </div>
-        </div>
-        <div class="footer">
-            <p>%s - Automated billing notification, please do not reply.</p>
-        </div>
-    </div>
-</body>
-</html>
-`, siteName, headline, message, badgeClass, balanceText, siteURL, buttonText, siteURL, title)
 }

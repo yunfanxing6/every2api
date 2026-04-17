@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/Wei-Shaw/sub2api/ent/group"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
 // Group is the model entity for the Group schema.
@@ -52,22 +53,6 @@ type Group struct {
 	ImagePrice2k *float64 `json:"image_price_2k,omitempty"`
 	// ImagePrice4k holds the value of the "image_price_4k" field.
 	ImagePrice4k *float64 `json:"image_price_4k,omitempty"`
-	// GrokInputPricePerMtok holds the value of the "grok_input_price_per_mtok" field.
-	GrokInputPricePerMtok *float64 `json:"grok_input_price_per_mtok,omitempty"`
-	// GrokOutputPricePerMtok holds the value of the "grok_output_price_per_mtok" field.
-	GrokOutputPricePerMtok *float64 `json:"grok_output_price_per_mtok,omitempty"`
-	// GrokImagePrice1k holds the value of the "grok_image_price_1k" field.
-	GrokImagePrice1k *float64 `json:"grok_image_price_1k,omitempty"`
-	// GrokImagePrice2k holds the value of the "grok_image_price_2k" field.
-	GrokImagePrice2k *float64 `json:"grok_image_price_2k,omitempty"`
-	// GrokVideoPrice5s holds the value of the "grok_video_price_5s" field.
-	GrokVideoPrice5s *float64 `json:"grok_video_price_5s,omitempty"`
-	// GrokVideoPrice10s holds the value of the "grok_video_price_10s" field.
-	GrokVideoPrice10s *float64 `json:"grok_video_price_10s,omitempty"`
-	// GrokVideoPrice15s holds the value of the "grok_video_price_15s" field.
-	GrokVideoPrice15s *float64 `json:"grok_video_price_15s,omitempty"`
-	// GrokVideoHighQualityMultiplier holds the value of the "grok_video_high_quality_multiplier" field.
-	GrokVideoHighQualityMultiplier *float64 `json:"grok_video_high_quality_multiplier,omitempty"`
 	// 是否仅允许 Claude Code 客户端
 	ClaudeCodeOnly bool `json:"claude_code_only,omitempty"`
 	// 非 Claude Code 请求降级使用的分组 ID
@@ -86,12 +71,14 @@ type Group struct {
 	SortOrder int `json:"sort_order,omitempty"`
 	// 是否允许 /v1/messages 调度到此 OpenAI 分组
 	AllowMessagesDispatch bool `json:"allow_messages_dispatch,omitempty"`
-	// 是否仅允许非 apikey 账号关联到该分组
+	// 仅允许非 apikey 类型账号关联到此分组
 	RequireOauthOnly bool `json:"require_oauth_only,omitempty"`
-	// 调度时是否仅允许 privacy 已设置成功的账号
+	// 调度时仅允许 privacy 已成功设置的账号
 	RequirePrivacySet bool `json:"require_privacy_set,omitempty"`
 	// 默认映射模型 ID，当账号级映射找不到时使用此值
 	DefaultMappedModel string `json:"default_mapped_model,omitempty"`
+	// OpenAI Messages 调度模型配置：按 Claude 系列/精确模型映射到目标 GPT 模型
+	MessagesDispatchModelConfig domain.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the GroupQuery when eager-loading is set.
 	Edges        GroupEdges `json:"edges"`
@@ -198,11 +185,11 @@ func (*Group) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case group.FieldModelRouting, group.FieldSupportedModelScopes:
+		case group.FieldModelRouting, group.FieldSupportedModelScopes, group.FieldMessagesDispatchModelConfig:
 			values[i] = new([]byte)
 		case group.FieldIsExclusive, group.FieldClaudeCodeOnly, group.FieldModelRoutingEnabled, group.FieldMcpXMLInject, group.FieldAllowMessagesDispatch, group.FieldRequireOauthOnly, group.FieldRequirePrivacySet:
 			values[i] = new(sql.NullBool)
-		case group.FieldRateMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k, group.FieldGrokInputPricePerMtok, group.FieldGrokOutputPricePerMtok, group.FieldGrokImagePrice1k, group.FieldGrokImagePrice2k, group.FieldGrokVideoPrice5s, group.FieldGrokVideoPrice10s, group.FieldGrokVideoPrice15s, group.FieldGrokVideoHighQualityMultiplier:
+		case group.FieldRateMultiplier, group.FieldDailyLimitUsd, group.FieldWeeklyLimitUsd, group.FieldMonthlyLimitUsd, group.FieldImagePrice1k, group.FieldImagePrice2k, group.FieldImagePrice4k:
 			values[i] = new(sql.NullFloat64)
 		case group.FieldID, group.FieldDefaultValidityDays, group.FieldFallbackGroupID, group.FieldFallbackGroupIDOnInvalidRequest, group.FieldSortOrder:
 			values[i] = new(sql.NullInt64)
@@ -341,62 +328,6 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 				_m.ImagePrice4k = new(float64)
 				*_m.ImagePrice4k = value.Float64
 			}
-		case group.FieldGrokInputPricePerMtok:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_input_price_per_mtok", values[i])
-			} else if value.Valid {
-				_m.GrokInputPricePerMtok = new(float64)
-				*_m.GrokInputPricePerMtok = value.Float64
-			}
-		case group.FieldGrokOutputPricePerMtok:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_output_price_per_mtok", values[i])
-			} else if value.Valid {
-				_m.GrokOutputPricePerMtok = new(float64)
-				*_m.GrokOutputPricePerMtok = value.Float64
-			}
-		case group.FieldGrokImagePrice1k:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_image_price_1k", values[i])
-			} else if value.Valid {
-				_m.GrokImagePrice1k = new(float64)
-				*_m.GrokImagePrice1k = value.Float64
-			}
-		case group.FieldGrokImagePrice2k:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_image_price_2k", values[i])
-			} else if value.Valid {
-				_m.GrokImagePrice2k = new(float64)
-				*_m.GrokImagePrice2k = value.Float64
-			}
-		case group.FieldGrokVideoPrice5s:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_video_price_5s", values[i])
-			} else if value.Valid {
-				_m.GrokVideoPrice5s = new(float64)
-				*_m.GrokVideoPrice5s = value.Float64
-			}
-		case group.FieldGrokVideoPrice10s:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_video_price_10s", values[i])
-			} else if value.Valid {
-				_m.GrokVideoPrice10s = new(float64)
-				*_m.GrokVideoPrice10s = value.Float64
-			}
-		case group.FieldGrokVideoPrice15s:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_video_price_15s", values[i])
-			} else if value.Valid {
-				_m.GrokVideoPrice15s = new(float64)
-				*_m.GrokVideoPrice15s = value.Float64
-			}
-		case group.FieldGrokVideoHighQualityMultiplier:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field grok_video_high_quality_multiplier", values[i])
-			} else if value.Valid {
-				_m.GrokVideoHighQualityMultiplier = new(float64)
-				*_m.GrokVideoHighQualityMultiplier = value.Float64
-			}
 		case group.FieldClaudeCodeOnly:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field claude_code_only", values[i])
@@ -474,6 +405,14 @@ func (_m *Group) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field default_mapped_model", values[i])
 			} else if value.Valid {
 				_m.DefaultMappedModel = value.String
+			}
+		case group.FieldMessagesDispatchModelConfig:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field messages_dispatch_model_config", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.MessagesDispatchModelConfig); err != nil {
+					return fmt.Errorf("unmarshal field messages_dispatch_model_config: %w", err)
+				}
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -618,46 +557,6 @@ func (_m *Group) String() string {
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
-	if v := _m.GrokInputPricePerMtok; v != nil {
-		builder.WriteString("grok_input_price_per_mtok=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.GrokOutputPricePerMtok; v != nil {
-		builder.WriteString("grok_output_price_per_mtok=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.GrokImagePrice1k; v != nil {
-		builder.WriteString("grok_image_price_1k=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.GrokImagePrice2k; v != nil {
-		builder.WriteString("grok_image_price_2k=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.GrokVideoPrice5s; v != nil {
-		builder.WriteString("grok_video_price_5s=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.GrokVideoPrice10s; v != nil {
-		builder.WriteString("grok_video_price_10s=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.GrokVideoPrice15s; v != nil {
-		builder.WriteString("grok_video_price_15s=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
-	if v := _m.GrokVideoHighQualityMultiplier; v != nil {
-		builder.WriteString("grok_video_high_quality_multiplier=")
-		builder.WriteString(fmt.Sprintf("%v", *v))
-	}
-	builder.WriteString(", ")
 	builder.WriteString("claude_code_only=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ClaudeCodeOnly))
 	builder.WriteString(", ")
@@ -697,6 +596,9 @@ func (_m *Group) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("default_mapped_model=")
 	builder.WriteString(_m.DefaultMappedModel)
+	builder.WriteString(", ")
+	builder.WriteString("messages_dispatch_model_config=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MessagesDispatchModelConfig))
 	builder.WriteByte(')')
 	return builder.String()
 }

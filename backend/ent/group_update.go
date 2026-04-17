@@ -20,6 +20,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
 // GroupUpdate is the builder for updating Group entities.
@@ -355,222 +356,6 @@ func (_u *GroupUpdate) ClearImagePrice4k() *GroupUpdate {
 	return _u
 }
 
-// SetGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field.
-func (_u *GroupUpdate) SetGrokInputPricePerMtok(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokInputPricePerMtok()
-	_u.mutation.SetGrokInputPricePerMtok(v)
-	return _u
-}
-
-// SetNillableGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokInputPricePerMtok(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokInputPricePerMtok(*v)
-	}
-	return _u
-}
-
-// AddGrokInputPricePerMtok adds value to the "grok_input_price_per_mtok" field.
-func (_u *GroupUpdate) AddGrokInputPricePerMtok(v float64) *GroupUpdate {
-	_u.mutation.AddGrokInputPricePerMtok(v)
-	return _u
-}
-
-// ClearGrokInputPricePerMtok clears the value of the "grok_input_price_per_mtok" field.
-func (_u *GroupUpdate) ClearGrokInputPricePerMtok() *GroupUpdate {
-	_u.mutation.ClearGrokInputPricePerMtok()
-	return _u
-}
-
-// SetGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field.
-func (_u *GroupUpdate) SetGrokOutputPricePerMtok(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokOutputPricePerMtok()
-	_u.mutation.SetGrokOutputPricePerMtok(v)
-	return _u
-}
-
-// SetNillableGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokOutputPricePerMtok(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokOutputPricePerMtok(*v)
-	}
-	return _u
-}
-
-// AddGrokOutputPricePerMtok adds value to the "grok_output_price_per_mtok" field.
-func (_u *GroupUpdate) AddGrokOutputPricePerMtok(v float64) *GroupUpdate {
-	_u.mutation.AddGrokOutputPricePerMtok(v)
-	return _u
-}
-
-// ClearGrokOutputPricePerMtok clears the value of the "grok_output_price_per_mtok" field.
-func (_u *GroupUpdate) ClearGrokOutputPricePerMtok() *GroupUpdate {
-	_u.mutation.ClearGrokOutputPricePerMtok()
-	return _u
-}
-
-// SetGrokImagePrice1k sets the "grok_image_price_1k" field.
-func (_u *GroupUpdate) SetGrokImagePrice1k(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokImagePrice1k()
-	_u.mutation.SetGrokImagePrice1k(v)
-	return _u
-}
-
-// SetNillableGrokImagePrice1k sets the "grok_image_price_1k" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokImagePrice1k(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokImagePrice1k(*v)
-	}
-	return _u
-}
-
-// AddGrokImagePrice1k adds value to the "grok_image_price_1k" field.
-func (_u *GroupUpdate) AddGrokImagePrice1k(v float64) *GroupUpdate {
-	_u.mutation.AddGrokImagePrice1k(v)
-	return _u
-}
-
-// ClearGrokImagePrice1k clears the value of the "grok_image_price_1k" field.
-func (_u *GroupUpdate) ClearGrokImagePrice1k() *GroupUpdate {
-	_u.mutation.ClearGrokImagePrice1k()
-	return _u
-}
-
-// SetGrokImagePrice2k sets the "grok_image_price_2k" field.
-func (_u *GroupUpdate) SetGrokImagePrice2k(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokImagePrice2k()
-	_u.mutation.SetGrokImagePrice2k(v)
-	return _u
-}
-
-// SetNillableGrokImagePrice2k sets the "grok_image_price_2k" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokImagePrice2k(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokImagePrice2k(*v)
-	}
-	return _u
-}
-
-// AddGrokImagePrice2k adds value to the "grok_image_price_2k" field.
-func (_u *GroupUpdate) AddGrokImagePrice2k(v float64) *GroupUpdate {
-	_u.mutation.AddGrokImagePrice2k(v)
-	return _u
-}
-
-// ClearGrokImagePrice2k clears the value of the "grok_image_price_2k" field.
-func (_u *GroupUpdate) ClearGrokImagePrice2k() *GroupUpdate {
-	_u.mutation.ClearGrokImagePrice2k()
-	return _u
-}
-
-// SetGrokVideoPrice5s sets the "grok_video_price_5s" field.
-func (_u *GroupUpdate) SetGrokVideoPrice5s(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokVideoPrice5s()
-	_u.mutation.SetGrokVideoPrice5s(v)
-	return _u
-}
-
-// SetNillableGrokVideoPrice5s sets the "grok_video_price_5s" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokVideoPrice5s(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokVideoPrice5s(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoPrice5s adds value to the "grok_video_price_5s" field.
-func (_u *GroupUpdate) AddGrokVideoPrice5s(v float64) *GroupUpdate {
-	_u.mutation.AddGrokVideoPrice5s(v)
-	return _u
-}
-
-// ClearGrokVideoPrice5s clears the value of the "grok_video_price_5s" field.
-func (_u *GroupUpdate) ClearGrokVideoPrice5s() *GroupUpdate {
-	_u.mutation.ClearGrokVideoPrice5s()
-	return _u
-}
-
-// SetGrokVideoPrice10s sets the "grok_video_price_10s" field.
-func (_u *GroupUpdate) SetGrokVideoPrice10s(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokVideoPrice10s()
-	_u.mutation.SetGrokVideoPrice10s(v)
-	return _u
-}
-
-// SetNillableGrokVideoPrice10s sets the "grok_video_price_10s" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokVideoPrice10s(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokVideoPrice10s(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoPrice10s adds value to the "grok_video_price_10s" field.
-func (_u *GroupUpdate) AddGrokVideoPrice10s(v float64) *GroupUpdate {
-	_u.mutation.AddGrokVideoPrice10s(v)
-	return _u
-}
-
-// ClearGrokVideoPrice10s clears the value of the "grok_video_price_10s" field.
-func (_u *GroupUpdate) ClearGrokVideoPrice10s() *GroupUpdate {
-	_u.mutation.ClearGrokVideoPrice10s()
-	return _u
-}
-
-// SetGrokVideoPrice15s sets the "grok_video_price_15s" field.
-func (_u *GroupUpdate) SetGrokVideoPrice15s(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokVideoPrice15s()
-	_u.mutation.SetGrokVideoPrice15s(v)
-	return _u
-}
-
-// SetNillableGrokVideoPrice15s sets the "grok_video_price_15s" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokVideoPrice15s(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokVideoPrice15s(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoPrice15s adds value to the "grok_video_price_15s" field.
-func (_u *GroupUpdate) AddGrokVideoPrice15s(v float64) *GroupUpdate {
-	_u.mutation.AddGrokVideoPrice15s(v)
-	return _u
-}
-
-// ClearGrokVideoPrice15s clears the value of the "grok_video_price_15s" field.
-func (_u *GroupUpdate) ClearGrokVideoPrice15s() *GroupUpdate {
-	_u.mutation.ClearGrokVideoPrice15s()
-	return _u
-}
-
-// SetGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field.
-func (_u *GroupUpdate) SetGrokVideoHighQualityMultiplier(v float64) *GroupUpdate {
-	_u.mutation.ResetGrokVideoHighQualityMultiplier()
-	_u.mutation.SetGrokVideoHighQualityMultiplier(v)
-	return _u
-}
-
-// SetNillableGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field if the given value is not nil.
-func (_u *GroupUpdate) SetNillableGrokVideoHighQualityMultiplier(v *float64) *GroupUpdate {
-	if v != nil {
-		_u.SetGrokVideoHighQualityMultiplier(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoHighQualityMultiplier adds value to the "grok_video_high_quality_multiplier" field.
-func (_u *GroupUpdate) AddGrokVideoHighQualityMultiplier(v float64) *GroupUpdate {
-	_u.mutation.AddGrokVideoHighQualityMultiplier(v)
-	return _u
-}
-
-// ClearGrokVideoHighQualityMultiplier clears the value of the "grok_video_high_quality_multiplier" field.
-func (_u *GroupUpdate) ClearGrokVideoHighQualityMultiplier() *GroupUpdate {
-	_u.mutation.ClearGrokVideoHighQualityMultiplier()
-	return _u
-}
-
 // SetClaudeCodeOnly sets the "claude_code_only" field.
 func (_u *GroupUpdate) SetClaudeCodeOnly(v bool) *GroupUpdate {
 	_u.mutation.SetClaudeCodeOnly(v)
@@ -764,6 +549,20 @@ func (_u *GroupUpdate) SetDefaultMappedModel(v string) *GroupUpdate {
 func (_u *GroupUpdate) SetNillableDefaultMappedModel(v *string) *GroupUpdate {
 	if v != nil {
 		_u.SetDefaultMappedModel(*v)
+	}
+	return _u
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (_u *GroupUpdate) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
+	_u.mutation.SetMessagesDispatchModelConfig(v)
+	return _u
+}
+
+// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
+func (_u *GroupUpdate) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupUpdate {
+	if v != nil {
+		_u.SetMessagesDispatchModelConfig(*v)
 	}
 	return _u
 }
@@ -1169,78 +968,6 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.ImagePrice4kCleared() {
 		_spec.ClearField(group.FieldImagePrice4k, field.TypeFloat64)
 	}
-	if value, ok := _u.mutation.GrokInputPricePerMtok(); ok {
-		_spec.SetField(group.FieldGrokInputPricePerMtok, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokInputPricePerMtok(); ok {
-		_spec.AddField(group.FieldGrokInputPricePerMtok, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokInputPricePerMtokCleared() {
-		_spec.ClearField(group.FieldGrokInputPricePerMtok, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokOutputPricePerMtok(); ok {
-		_spec.SetField(group.FieldGrokOutputPricePerMtok, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokOutputPricePerMtok(); ok {
-		_spec.AddField(group.FieldGrokOutputPricePerMtok, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokOutputPricePerMtokCleared() {
-		_spec.ClearField(group.FieldGrokOutputPricePerMtok, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokImagePrice1k(); ok {
-		_spec.SetField(group.FieldGrokImagePrice1k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokImagePrice1k(); ok {
-		_spec.AddField(group.FieldGrokImagePrice1k, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokImagePrice1kCleared() {
-		_spec.ClearField(group.FieldGrokImagePrice1k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokImagePrice2k(); ok {
-		_spec.SetField(group.FieldGrokImagePrice2k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokImagePrice2k(); ok {
-		_spec.AddField(group.FieldGrokImagePrice2k, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokImagePrice2kCleared() {
-		_spec.ClearField(group.FieldGrokImagePrice2k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoPrice5s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice5s, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoPrice5s(); ok {
-		_spec.AddField(group.FieldGrokVideoPrice5s, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoPrice5sCleared() {
-		_spec.ClearField(group.FieldGrokVideoPrice5s, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoPrice10s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice10s, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoPrice10s(); ok {
-		_spec.AddField(group.FieldGrokVideoPrice10s, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoPrice10sCleared() {
-		_spec.ClearField(group.FieldGrokVideoPrice10s, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoPrice15s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice15s, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoPrice15s(); ok {
-		_spec.AddField(group.FieldGrokVideoPrice15s, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoPrice15sCleared() {
-		_spec.ClearField(group.FieldGrokVideoPrice15s, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoHighQualityMultiplier(); ok {
-		_spec.SetField(group.FieldGrokVideoHighQualityMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoHighQualityMultiplier(); ok {
-		_spec.AddField(group.FieldGrokVideoHighQualityMultiplier, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoHighQualityMultiplierCleared() {
-		_spec.ClearField(group.FieldGrokVideoHighQualityMultiplier, field.TypeFloat64)
-	}
 	if value, ok := _u.mutation.ClaudeCodeOnly(); ok {
 		_spec.SetField(group.FieldClaudeCodeOnly, field.TypeBool, value)
 	}
@@ -1299,6 +1026,9 @@ func (_u *GroupUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
+		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -1934,222 +1664,6 @@ func (_u *GroupUpdateOne) ClearImagePrice4k() *GroupUpdateOne {
 	return _u
 }
 
-// SetGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field.
-func (_u *GroupUpdateOne) SetGrokInputPricePerMtok(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokInputPricePerMtok()
-	_u.mutation.SetGrokInputPricePerMtok(v)
-	return _u
-}
-
-// SetNillableGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokInputPricePerMtok(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokInputPricePerMtok(*v)
-	}
-	return _u
-}
-
-// AddGrokInputPricePerMtok adds value to the "grok_input_price_per_mtok" field.
-func (_u *GroupUpdateOne) AddGrokInputPricePerMtok(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokInputPricePerMtok(v)
-	return _u
-}
-
-// ClearGrokInputPricePerMtok clears the value of the "grok_input_price_per_mtok" field.
-func (_u *GroupUpdateOne) ClearGrokInputPricePerMtok() *GroupUpdateOne {
-	_u.mutation.ClearGrokInputPricePerMtok()
-	return _u
-}
-
-// SetGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field.
-func (_u *GroupUpdateOne) SetGrokOutputPricePerMtok(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokOutputPricePerMtok()
-	_u.mutation.SetGrokOutputPricePerMtok(v)
-	return _u
-}
-
-// SetNillableGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokOutputPricePerMtok(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokOutputPricePerMtok(*v)
-	}
-	return _u
-}
-
-// AddGrokOutputPricePerMtok adds value to the "grok_output_price_per_mtok" field.
-func (_u *GroupUpdateOne) AddGrokOutputPricePerMtok(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokOutputPricePerMtok(v)
-	return _u
-}
-
-// ClearGrokOutputPricePerMtok clears the value of the "grok_output_price_per_mtok" field.
-func (_u *GroupUpdateOne) ClearGrokOutputPricePerMtok() *GroupUpdateOne {
-	_u.mutation.ClearGrokOutputPricePerMtok()
-	return _u
-}
-
-// SetGrokImagePrice1k sets the "grok_image_price_1k" field.
-func (_u *GroupUpdateOne) SetGrokImagePrice1k(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokImagePrice1k()
-	_u.mutation.SetGrokImagePrice1k(v)
-	return _u
-}
-
-// SetNillableGrokImagePrice1k sets the "grok_image_price_1k" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokImagePrice1k(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokImagePrice1k(*v)
-	}
-	return _u
-}
-
-// AddGrokImagePrice1k adds value to the "grok_image_price_1k" field.
-func (_u *GroupUpdateOne) AddGrokImagePrice1k(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokImagePrice1k(v)
-	return _u
-}
-
-// ClearGrokImagePrice1k clears the value of the "grok_image_price_1k" field.
-func (_u *GroupUpdateOne) ClearGrokImagePrice1k() *GroupUpdateOne {
-	_u.mutation.ClearGrokImagePrice1k()
-	return _u
-}
-
-// SetGrokImagePrice2k sets the "grok_image_price_2k" field.
-func (_u *GroupUpdateOne) SetGrokImagePrice2k(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokImagePrice2k()
-	_u.mutation.SetGrokImagePrice2k(v)
-	return _u
-}
-
-// SetNillableGrokImagePrice2k sets the "grok_image_price_2k" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokImagePrice2k(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokImagePrice2k(*v)
-	}
-	return _u
-}
-
-// AddGrokImagePrice2k adds value to the "grok_image_price_2k" field.
-func (_u *GroupUpdateOne) AddGrokImagePrice2k(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokImagePrice2k(v)
-	return _u
-}
-
-// ClearGrokImagePrice2k clears the value of the "grok_image_price_2k" field.
-func (_u *GroupUpdateOne) ClearGrokImagePrice2k() *GroupUpdateOne {
-	_u.mutation.ClearGrokImagePrice2k()
-	return _u
-}
-
-// SetGrokVideoPrice5s sets the "grok_video_price_5s" field.
-func (_u *GroupUpdateOne) SetGrokVideoPrice5s(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokVideoPrice5s()
-	_u.mutation.SetGrokVideoPrice5s(v)
-	return _u
-}
-
-// SetNillableGrokVideoPrice5s sets the "grok_video_price_5s" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokVideoPrice5s(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokVideoPrice5s(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoPrice5s adds value to the "grok_video_price_5s" field.
-func (_u *GroupUpdateOne) AddGrokVideoPrice5s(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokVideoPrice5s(v)
-	return _u
-}
-
-// ClearGrokVideoPrice5s clears the value of the "grok_video_price_5s" field.
-func (_u *GroupUpdateOne) ClearGrokVideoPrice5s() *GroupUpdateOne {
-	_u.mutation.ClearGrokVideoPrice5s()
-	return _u
-}
-
-// SetGrokVideoPrice10s sets the "grok_video_price_10s" field.
-func (_u *GroupUpdateOne) SetGrokVideoPrice10s(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokVideoPrice10s()
-	_u.mutation.SetGrokVideoPrice10s(v)
-	return _u
-}
-
-// SetNillableGrokVideoPrice10s sets the "grok_video_price_10s" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokVideoPrice10s(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokVideoPrice10s(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoPrice10s adds value to the "grok_video_price_10s" field.
-func (_u *GroupUpdateOne) AddGrokVideoPrice10s(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokVideoPrice10s(v)
-	return _u
-}
-
-// ClearGrokVideoPrice10s clears the value of the "grok_video_price_10s" field.
-func (_u *GroupUpdateOne) ClearGrokVideoPrice10s() *GroupUpdateOne {
-	_u.mutation.ClearGrokVideoPrice10s()
-	return _u
-}
-
-// SetGrokVideoPrice15s sets the "grok_video_price_15s" field.
-func (_u *GroupUpdateOne) SetGrokVideoPrice15s(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokVideoPrice15s()
-	_u.mutation.SetGrokVideoPrice15s(v)
-	return _u
-}
-
-// SetNillableGrokVideoPrice15s sets the "grok_video_price_15s" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokVideoPrice15s(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokVideoPrice15s(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoPrice15s adds value to the "grok_video_price_15s" field.
-func (_u *GroupUpdateOne) AddGrokVideoPrice15s(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokVideoPrice15s(v)
-	return _u
-}
-
-// ClearGrokVideoPrice15s clears the value of the "grok_video_price_15s" field.
-func (_u *GroupUpdateOne) ClearGrokVideoPrice15s() *GroupUpdateOne {
-	_u.mutation.ClearGrokVideoPrice15s()
-	return _u
-}
-
-// SetGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field.
-func (_u *GroupUpdateOne) SetGrokVideoHighQualityMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.ResetGrokVideoHighQualityMultiplier()
-	_u.mutation.SetGrokVideoHighQualityMultiplier(v)
-	return _u
-}
-
-// SetNillableGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field if the given value is not nil.
-func (_u *GroupUpdateOne) SetNillableGrokVideoHighQualityMultiplier(v *float64) *GroupUpdateOne {
-	if v != nil {
-		_u.SetGrokVideoHighQualityMultiplier(*v)
-	}
-	return _u
-}
-
-// AddGrokVideoHighQualityMultiplier adds value to the "grok_video_high_quality_multiplier" field.
-func (_u *GroupUpdateOne) AddGrokVideoHighQualityMultiplier(v float64) *GroupUpdateOne {
-	_u.mutation.AddGrokVideoHighQualityMultiplier(v)
-	return _u
-}
-
-// ClearGrokVideoHighQualityMultiplier clears the value of the "grok_video_high_quality_multiplier" field.
-func (_u *GroupUpdateOne) ClearGrokVideoHighQualityMultiplier() *GroupUpdateOne {
-	_u.mutation.ClearGrokVideoHighQualityMultiplier()
-	return _u
-}
-
 // SetClaudeCodeOnly sets the "claude_code_only" field.
 func (_u *GroupUpdateOne) SetClaudeCodeOnly(v bool) *GroupUpdateOne {
 	_u.mutation.SetClaudeCodeOnly(v)
@@ -2343,6 +1857,20 @@ func (_u *GroupUpdateOne) SetDefaultMappedModel(v string) *GroupUpdateOne {
 func (_u *GroupUpdateOne) SetNillableDefaultMappedModel(v *string) *GroupUpdateOne {
 	if v != nil {
 		_u.SetDefaultMappedModel(*v)
+	}
+	return _u
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (_u *GroupUpdateOne) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
+	_u.mutation.SetMessagesDispatchModelConfig(v)
+	return _u
+}
+
+// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
+func (_u *GroupUpdateOne) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupUpdateOne {
+	if v != nil {
+		_u.SetMessagesDispatchModelConfig(*v)
 	}
 	return _u
 }
@@ -2778,78 +2306,6 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	if _u.mutation.ImagePrice4kCleared() {
 		_spec.ClearField(group.FieldImagePrice4k, field.TypeFloat64)
 	}
-	if value, ok := _u.mutation.GrokInputPricePerMtok(); ok {
-		_spec.SetField(group.FieldGrokInputPricePerMtok, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokInputPricePerMtok(); ok {
-		_spec.AddField(group.FieldGrokInputPricePerMtok, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokInputPricePerMtokCleared() {
-		_spec.ClearField(group.FieldGrokInputPricePerMtok, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokOutputPricePerMtok(); ok {
-		_spec.SetField(group.FieldGrokOutputPricePerMtok, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokOutputPricePerMtok(); ok {
-		_spec.AddField(group.FieldGrokOutputPricePerMtok, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokOutputPricePerMtokCleared() {
-		_spec.ClearField(group.FieldGrokOutputPricePerMtok, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokImagePrice1k(); ok {
-		_spec.SetField(group.FieldGrokImagePrice1k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokImagePrice1k(); ok {
-		_spec.AddField(group.FieldGrokImagePrice1k, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokImagePrice1kCleared() {
-		_spec.ClearField(group.FieldGrokImagePrice1k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokImagePrice2k(); ok {
-		_spec.SetField(group.FieldGrokImagePrice2k, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokImagePrice2k(); ok {
-		_spec.AddField(group.FieldGrokImagePrice2k, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokImagePrice2kCleared() {
-		_spec.ClearField(group.FieldGrokImagePrice2k, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoPrice5s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice5s, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoPrice5s(); ok {
-		_spec.AddField(group.FieldGrokVideoPrice5s, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoPrice5sCleared() {
-		_spec.ClearField(group.FieldGrokVideoPrice5s, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoPrice10s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice10s, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoPrice10s(); ok {
-		_spec.AddField(group.FieldGrokVideoPrice10s, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoPrice10sCleared() {
-		_spec.ClearField(group.FieldGrokVideoPrice10s, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoPrice15s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice15s, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoPrice15s(); ok {
-		_spec.AddField(group.FieldGrokVideoPrice15s, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoPrice15sCleared() {
-		_spec.ClearField(group.FieldGrokVideoPrice15s, field.TypeFloat64)
-	}
-	if value, ok := _u.mutation.GrokVideoHighQualityMultiplier(); ok {
-		_spec.SetField(group.FieldGrokVideoHighQualityMultiplier, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.AddedGrokVideoHighQualityMultiplier(); ok {
-		_spec.AddField(group.FieldGrokVideoHighQualityMultiplier, field.TypeFloat64, value)
-	}
-	if _u.mutation.GrokVideoHighQualityMultiplierCleared() {
-		_spec.ClearField(group.FieldGrokVideoHighQualityMultiplier, field.TypeFloat64)
-	}
 	if value, ok := _u.mutation.ClaudeCodeOnly(); ok {
 		_spec.SetField(group.FieldClaudeCodeOnly, field.TypeBool, value)
 	}
@@ -2908,6 +2364,9 @@ func (_u *GroupUpdateOne) sqlSave(ctx context.Context) (_node *Group, err error)
 	}
 	if value, ok := _u.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MessagesDispatchModelConfig(); ok {
+		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
 	}
 	if _u.mutation.APIKeysCleared() {
 		edge := &sqlgraph.EdgeSpec{

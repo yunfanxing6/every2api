@@ -42,7 +42,7 @@ func RegisterGatewayRoutes(
 	{
 		// /v1/messages: auto-route based on group platform
 		gateway.POST("/messages", func(c *gin.Context) {
-			if isOpenAICompatibleGroupPlatform(getGroupPlatform(c)) {
+			if usesOpenAIGatewayForMessages(getGroupPlatform(c)) {
 				h.OpenAIGateway.Messages(c)
 				return
 			}
@@ -66,14 +66,14 @@ func RegisterGatewayRoutes(
 		gateway.GET("/usage", h.Gateway.Usage)
 		// OpenAI Responses API: auto-route based on group platform
 		gateway.POST("/responses", func(c *gin.Context) {
-			if isOpenAICompatibleGroupPlatform(getGroupPlatform(c)) {
+			if usesOpenAIGatewayForOpenAICompat(getGroupPlatform(c)) {
 				h.OpenAIGateway.Responses(c)
 				return
 			}
 			h.Gateway.Responses(c)
 		})
 		gateway.POST("/responses/*subpath", func(c *gin.Context) {
-			if isOpenAICompatibleGroupPlatform(getGroupPlatform(c)) {
+			if usesOpenAIGatewayForOpenAICompat(getGroupPlatform(c)) {
 				h.OpenAIGateway.Responses(c)
 				return
 			}
@@ -82,21 +82,11 @@ func RegisterGatewayRoutes(
 		gateway.GET("/responses", h.OpenAIGateway.ResponsesWebSocket)
 		// OpenAI Chat Completions API: auto-route based on group platform
 		gateway.POST("/chat/completions", func(c *gin.Context) {
-			if isOpenAICompatibleGroupPlatform(getGroupPlatform(c)) {
+			if usesOpenAIGatewayForOpenAICompat(getGroupPlatform(c)) {
 				h.OpenAIGateway.ChatCompletions(c)
 				return
 			}
 			h.Gateway.ChatCompletions(c)
-		})
-		gateway.POST("/images/generations", h.OpenAIGateway.ImageGenerations)
-		gateway.POST("/images/edits", h.OpenAIGateway.ImageEdits)
-		gateway.POST("/videos", h.OpenAIGateway.Videos)
-		gateway.POST("/video/extend", h.OpenAIGateway.VideoExtend)
-		gateway.GET("/files/image/*filename", func(c *gin.Context) {
-			h.OpenAIGateway.ProxyGrokFile(c, "image")
-		})
-		gateway.GET("/files/video/*filename", func(c *gin.Context) {
-			h.OpenAIGateway.ProxyGrokFile(c, "video")
 		})
 	}
 
@@ -117,7 +107,7 @@ func RegisterGatewayRoutes(
 
 	// OpenAI Responses API（不带v1前缀的别名）— auto-route based on group platform
 	responsesHandler := func(c *gin.Context) {
-		if isOpenAICompatibleGroupPlatform(getGroupPlatform(c)) {
+		if usesOpenAIGatewayForOpenAICompat(getGroupPlatform(c)) {
 			h.OpenAIGateway.Responses(c)
 			return
 		}
@@ -128,7 +118,7 @@ func RegisterGatewayRoutes(
 	r.GET("/responses", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, h.OpenAIGateway.ResponsesWebSocket)
 	// OpenAI Chat Completions API（不带v1前缀的别名）— auto-route based on group platform
 	r.POST("/chat/completions", bodyLimit, clientRequestID, opsErrorLogger, endpointNorm, gin.HandlerFunc(apiKeyAuth), requireGroupAnthropic, func(c *gin.Context) {
-		if isOpenAICompatibleGroupPlatform(getGroupPlatform(c)) {
+		if usesOpenAIGatewayForOpenAICompat(getGroupPlatform(c)) {
 			h.OpenAIGateway.ChatCompletions(c)
 			return
 		}
@@ -179,6 +169,15 @@ func getGroupPlatform(c *gin.Context) string {
 	return apiKey.Group.Platform
 }
 
-func isOpenAICompatibleGroupPlatform(platform string) bool {
-	return platform == service.PlatformOpenAI || platform == service.PlatformGrok || platform == service.PlatformQwen
+func usesOpenAIGatewayForMessages(platform string) bool {
+	return platform == service.PlatformOpenAI
+}
+
+func usesOpenAIGatewayForOpenAICompat(platform string) bool {
+	switch platform {
+	case service.PlatformOpenAI, service.PlatformGrok, service.PlatformQwen:
+		return true
+	default:
+		return false
+	}
 }

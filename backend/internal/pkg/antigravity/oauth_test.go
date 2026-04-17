@@ -13,6 +13,20 @@ import (
 	"time"
 )
 
+func setTestAntigravityOAuthConfig(t *testing.T, clientID, clientSecret string) {
+	t.Helper()
+	oldClientID := ClientID
+	oldClientSecret := defaultClientSecret
+	t.Setenv(AntigravityOAuthClientIDEnv, "")
+	t.Setenv(AntigravityOAuthClientSecretEnv, "")
+	ClientID = clientID
+	defaultClientSecret = clientSecret
+	t.Cleanup(func() {
+		ClientID = oldClientID
+		defaultClientSecret = oldClientSecret
+	})
+}
+
 // ---------------------------------------------------------------------------
 // getClientSecret
 // ---------------------------------------------------------------------------
@@ -32,20 +46,6 @@ func TestGetClientSecret_环境变量设置(t *testing.T) {
 	}
 	if secret != "my-secret-value" {
 		t.Errorf("client_secret 不匹配: got %s, want my-secret-value", secret)
-	}
-}
-
-func TestGetClientID_环境变量设置(t *testing.T) {
-	old := ClientID
-	ClientID = "test-client-id"
-	t.Cleanup(func() { ClientID = old })
-
-	clientID, err := getClientID()
-	if err != nil {
-		t.Fatalf("获取 client_id 失败: %v", err)
-	}
-	if clientID != "test-client-id" {
-		t.Errorf("client_id 不匹配: got %s, want test-client-id", clientID)
 	}
 }
 
@@ -606,10 +606,15 @@ func TestGenerateCodeChallenge_不同输入不同输出(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestBuildAuthorizationURL_参数验证(t *testing.T) {
+	setTestAntigravityOAuthConfig(t, "test-client-id", "test-secret")
+
 	state := "test-state-123"
 	codeChallenge := "test-challenge-abc"
 
-	authURL := BuildAuthorizationURL(state, codeChallenge)
+	authURL, err := BuildAuthorizationURL(state, codeChallenge)
+	if err != nil {
+		t.Fatalf("BuildAuthorizationURL 失败: %v", err)
+	}
 
 	// 验证以 AuthorizeURL 开头
 	if !strings.HasPrefix(authURL, AuthorizeURL+"?") {
@@ -646,7 +651,13 @@ func TestBuildAuthorizationURL_参数验证(t *testing.T) {
 }
 
 func TestBuildAuthorizationURL_参数数量(t *testing.T) {
-	authURL := BuildAuthorizationURL("s", "c")
+	setTestAntigravityOAuthConfig(t, "test-client-id", "test-secret")
+
+	authURL, err := BuildAuthorizationURL("s", "c")
+	if err != nil {
+		t.Fatalf("BuildAuthorizationURL 失败: %v", err)
+	}
+
 	parsed, err := url.Parse(authURL)
 	if err != nil {
 		t.Fatalf("解析 URL 失败: %v", err)
@@ -661,10 +672,15 @@ func TestBuildAuthorizationURL_参数数量(t *testing.T) {
 }
 
 func TestBuildAuthorizationURL_特殊字符编码(t *testing.T) {
+	setTestAntigravityOAuthConfig(t, "test-client-id", "test-secret")
+
 	state := "state+with/special=chars"
 	codeChallenge := "challenge+value"
 
-	authURL := BuildAuthorizationURL(state, codeChallenge)
+	authURL, err := BuildAuthorizationURL(state, codeChallenge)
+	if err != nil {
+		t.Fatalf("BuildAuthorizationURL 失败: %v", err)
+	}
 
 	parsed, err := url.Parse(authURL)
 	if err != nil {
@@ -678,10 +694,12 @@ func TestBuildAuthorizationURL_特殊字符编码(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 常量值验证
+// 配置值验证
 // ---------------------------------------------------------------------------
 
 func TestConstants_值正确(t *testing.T) {
+	setTestAntigravityOAuthConfig(t, "test-client-id", "test-secret")
+
 	if AuthorizeURL != "https://accounts.google.com/o/oauth2/v2/auth" {
 		t.Errorf("AuthorizeURL 不匹配: got %s", AuthorizeURL)
 	}
@@ -691,12 +709,19 @@ func TestConstants_值正确(t *testing.T) {
 	if UserInfoURL != "https://www.googleapis.com/oauth2/v2/userinfo" {
 		t.Errorf("UserInfoURL 不匹配: got %s", UserInfoURL)
 	}
-	if ClientID != "" {
-		t.Errorf("ClientID 默认应为空，got %s", ClientID)
+	clientID, err := getClientID()
+	if err != nil {
+		t.Fatalf("getClientID 应返回测试值，但报错: %v", err)
 	}
-	_, err := getClientSecret()
-	if err == nil {
-		t.Fatalf("getClientSecret 默认应要求环境变量")
+	if clientID != "test-client-id" {
+		t.Errorf("ClientID 不匹配: got %s", clientID)
+	}
+	secret, err := getClientSecret()
+	if err != nil {
+		t.Fatalf("getClientSecret 应返回测试值，但报错: %v", err)
+	}
+	if secret != "test-secret" {
+		t.Errorf("默认 client_secret 不匹配: got %s", secret)
 	}
 	if RedirectURI != "http://localhost:8085/callback" {
 		t.Errorf("RedirectURI 不匹配: got %s", RedirectURI)

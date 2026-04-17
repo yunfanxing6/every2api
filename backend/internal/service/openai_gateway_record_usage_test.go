@@ -145,6 +145,9 @@ func newOpenAIRecordUsageServiceForTest(usageRepo UsageLogRepository, userRepo U
 		nil,
 		&DeferredService{},
 		nil,
+		nil,
+		nil,
+		nil,
 	)
 	svc.userGroupRateResolver = newUserGroupRateResolver(
 		rateRepo,
@@ -959,6 +962,12 @@ func TestOpenAIGatewayServiceRecordUsage_ChannelMappedDoesNotOverrideBillingMode
 		APIKey:  &APIKey{ID: 10},
 		User:    &User{ID: 20},
 		Account: &Account{ID: 30},
+		ChannelUsageFields: ChannelUsageFields{
+			ChannelID:          1,
+			OriginalModel:      "glm",
+			ChannelMappedModel: "glm", // channel did NOT map
+			BillingModelSource: BillingModelSourceChannelMapped,
+		},
 	})
 
 	require.NoError(t, err)
@@ -974,9 +983,9 @@ func TestOpenAIGatewayServiceRecordUsage_ChannelMappedOverridesBillingModelWhenM
 	svc := newOpenAIRecordUsageServiceForTest(usageRepo, userRepo, subRepo, nil)
 	usage := OpenAIUsage{InputTokens: 20, OutputTokens: 10}
 
-	// 在当前 v0.1.108 路径下，如果没有额外的渠道使用字段，
-	// RecordUsage 会继续按 BillingModel 计费。
-	expectedCost, err := svc.billingService.CalculateCost("gpt-5.1-codex", UsageTokens{
+	// When channel DID map the model (ChannelMappedModel != OriginalModel),
+	// billing should use the channel-mapped model, honoring admin intent.
+	expectedCost, err := svc.billingService.CalculateCost("gpt-5.1", UsageTokens{
 		InputTokens:  20,
 		OutputTokens: 10,
 	}, 1.1)
@@ -994,6 +1003,12 @@ func TestOpenAIGatewayServiceRecordUsage_ChannelMappedOverridesBillingModelWhenM
 		APIKey:  &APIKey{ID: 10},
 		User:    &User{ID: 20},
 		Account: &Account{ID: 30},
+		ChannelUsageFields: ChannelUsageFields{
+			ChannelID:          1,
+			OriginalModel:      "glm",
+			ChannelMappedModel: "gpt-5.1", // channel mapped glm → gpt-5.1
+			BillingModelSource: BillingModelSourceChannelMapped,
+		},
 	})
 
 	require.NoError(t, err)

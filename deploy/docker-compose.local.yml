@@ -125,9 +125,7 @@ services:
 
       # Built-in OAuth client secrets (optional)
       # SECURITY: This repo does not embed third-party client_secret.
-      - GEMINI_CLI_OAUTH_CLIENT_ID=${GEMINI_CLI_OAUTH_CLIENT_ID:-}
       - GEMINI_CLI_OAUTH_CLIENT_SECRET=${GEMINI_CLI_OAUTH_CLIENT_SECRET:-}
-      - ANTIGRAVITY_OAUTH_CLIENT_ID=${ANTIGRAVITY_OAUTH_CLIENT_ID:-}
       - ANTIGRAVITY_OAUTH_CLIENT_SECRET=${ANTIGRAVITY_OAUTH_CLIENT_SECRET:-}
 
       # =======================================================================
@@ -148,8 +146,6 @@ services:
       # Proxy for accessing GitHub (online updates + pricing data)
       # Examples: http://host:port, socks5://host:port
       - UPDATE_PROXY_URL=${UPDATE_PROXY_URL:-}
-      # Default GitHub release repo for this fork's updater
-      - SUB2API_RELEASE_REPO=${SUB2API_RELEASE_REPO:-yunfanxing6/sub2api-grok}
     depends_on:
       postgres:
         condition: service_healthy

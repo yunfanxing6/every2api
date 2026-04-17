@@ -13,7 +13,11 @@
   </svg>
   <!-- Grok logo -->
   <svg v-else-if="platform === 'grok'" :class="sizeClass" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M5.5 5h4.2l4.3 5.7V5h4.5v14h-4.2l-4.3-5.7V19H5.5V5z" />
+    <path d="M5 4h4.6l3.6 5.13L16.92 4H20l-5.16 7.18L20 20h-4.62l-3.92-5.78L7.45 20H4.28l5.48-7.7z" />
+  </svg>
+  <!-- Qwen logo -->
+  <svg v-else-if="platform === 'qwen'" :class="sizeClass" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2a8 8 0 1 0 4.9 14.33l3.38 3.38 1.41-1.41-3.37-3.37A8 8 0 0 0 12 2zm0 2a6 6 0 1 1 0 12 6 6 0 0 1 0-12zm-1 3h2a3 3 0 1 1 0 6h-2zm2 2h-2v2h2a1 1 0 1 0 0-2z" />
   </svg>
   <!-- Gemini logo (simple star) -->
   <svg v-else-if="platform === 'gemini'" :class="sizeClass" viewBox="0 0 24 24" fill="currentColor">

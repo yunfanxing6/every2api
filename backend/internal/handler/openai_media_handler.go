@@ -455,6 +455,24 @@ func (h *OpenAIGatewayHandler) handleGrokMediaCreate(
 }
 
 func (h *OpenAIGatewayHandler) ImageGenerations(c *gin.Context) {
+	if h.any2apiClient != nil {
+		body, err := io.ReadAll(c.Request.Body)
+		if err == nil {
+			c.Request.Body = io.NopCloser(bytes.NewReader(body))
+			if gjson.ValidBytes(body) && h.any2apiClient.HandlesModel(gjson.GetBytes(body, "model").String()) {
+				apiKey, _ := middleware2.GetAPIKeyFromContext(c)
+				subscription, _ := middleware2.GetSubscriptionFromContext(c)
+				model := gjson.GetBytes(body, "model").String()
+				proxyResult, proxyErr := h.any2apiClient.ProxyRequest(c.Request.Context(), c, http.MethodPost, "/v1/images/generations", body)
+				if proxyErr != nil {
+					h.errorResponse(c, http.StatusBadGateway, "api_error", "Any2API proxy request failed")
+				} else {
+					h.recordAny2APIProxyUsage(c, apiKey, subscription, model, proxyResult, c.FullPath(), "/v1/images/generations")
+				}
+				return
+			}
+		}
+	}
 	h.handleGrokMediaCreate(c, "/images/generations", func(body []byte, _ string) (grokMediaRequestMeta, error) {
 		if !gjson.ValidBytes(body) {
 			return grokMediaRequestMeta{}, io.ErrUnexpectedEOF

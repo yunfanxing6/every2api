@@ -36,6 +36,7 @@ type OpenAIGatewayHandler struct {
 	maxAccountSwitches      int
 	cfg                     *config.Config
 	settingService          *service.SettingService
+	any2apiClient           *service.Any2APIClient
 }
 
 func resolveOpenAIForwardDefaultMappedModel(apiKey *service.APIKey, fallbackModel string) string {
@@ -48,6 +49,13 @@ func resolveOpenAIForwardDefaultMappedModel(apiKey *service.APIKey, fallbackMode
 	return strings.TrimSpace(apiKey.Group.DefaultMappedModel)
 }
 
+func resolveOpenAIMessagesDispatchMappedModel(apiKey *service.APIKey, requestedModel string) string {
+	if apiKey == nil || apiKey.Group == nil {
+		return ""
+	}
+	return strings.TrimSpace(apiKey.Group.ResolveMessagesDispatchModel(requestedModel))
+}
+
 // NewOpenAIGatewayHandler creates a new OpenAIGatewayHandler
 func NewOpenAIGatewayHandler(
 	gatewayService *service.OpenAIGatewayService,
@@ -57,6 +65,7 @@ func NewOpenAIGatewayHandler(
 	usageRecordWorkerPool *service.UsageRecordWorkerPool,
 	errorPassthroughService *service.ErrorPassthroughService,
 	settingService *service.SettingService,
+	any2apiClient *service.Any2APIClient,
 	cfg *config.Config,
 ) *OpenAIGatewayHandler {
 	pingInterval := time.Duration(0)
@@ -77,7 +86,69 @@ func NewOpenAIGatewayHandler(
 		maxAccountSwitches:      maxAccountSwitches,
 		cfg:                     cfg,
 		settingService:          settingService,
+		any2apiClient:           any2apiClient,
 	}
+}
+
+func any2apiSyntheticAccount(model string) *service.Account {
+	platform := service.PlatformOpenAI
+	name := "any2api-upstream"
+	lowered := strings.ToLower(strings.TrimSpace(model))
+	if strings.HasPrefix(lowered, "grok") {
+		platform = service.PlatformGrok
+		name = "grok2api-upstream"
+	} else if strings.HasPrefix(lowered, "qwen") {
+		platform = service.PlatformQwen
+		name = "qwen2api-upstream"
+	}
+	return &service.Account{
+		ID:          0,
+		Name:        name,
+		Platform:    platform,
+		Type:        service.AccountTypeAPIKey,
+		Concurrency: 1,
+		Schedulable: true,
+		Status:      service.StatusActive,
+	}
+}
+
+func (h *OpenAIGatewayHandler) recordAny2APIProxyUsage(
+	c *gin.Context,
+	apiKey *service.APIKey,
+	subscription *service.UserSubscription,
+	model string,
+	proxyResult *service.Any2APIProxyResult,
+	inboundEndpoint string,
+	upstreamEndpoint string,
+) {
+	if h == nil || proxyResult == nil || apiKey == nil || apiKey.User == nil {
+		return
+	}
+	forwardResult := &service.OpenAIForwardResult{
+		Model:      model,
+		Usage:      proxyResult.Usage,
+		Stream:     proxyResult.Stream,
+		MediaType:  proxyResult.MediaType,
+		ImageCount: proxyResult.ImageCount,
+		ImageSize:  proxyResult.ImageSize,
+	}
+	account := any2apiSyntheticAccount(model)
+	userAgent := c.GetHeader("User-Agent")
+	clientIP := ip.GetClientIP(c)
+	h.submitUsageRecordTask(func(ctx context.Context) {
+		_ = h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
+			Result:           forwardResult,
+			APIKey:           apiKey,
+			User:             apiKey.User,
+			Account:          account,
+			Subscription:     subscription,
+			InboundEndpoint:  inboundEndpoint,
+			UpstreamEndpoint: upstreamEndpoint,
+			UserAgent:        userAgent,
+			IPAddress:        clientIP,
+			APIKeyService:    h.apiKeyService,
+		})
+	})
 }
 
 // Responses handles OpenAI Responses API endpoint
@@ -98,11 +169,6 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 		h.errorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
 		return
 	}
-	gatewayPlatform := service.PlatformOpenAI
-	if apiKey.Group != nil && strings.TrimSpace(apiKey.Group.Platform) != "" {
-		gatewayPlatform = apiKey.Group.Platform
-	}
-	c.Request = c.Request.WithContext(service.WithOpenAICompatiblePlatform(c.Request.Context(), gatewayPlatform))
 
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {
@@ -211,6 +277,17 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 
 	service.SetOpsLatencyMs(c, service.OpsAuthLatencyMsKey, time.Since(requestStart).Milliseconds())
 	routingStart := time.Now()
+
+	if h.any2apiClient != nil && h.any2apiClient.HandlesModel(reqModel) {
+		proxyResult, err := h.any2apiClient.ProxyRequest(c.Request.Context(), c, http.MethodPost, "/v1/responses", body)
+		if err != nil {
+			reqLog.Warn("openai.responses.any2api_proxy_failed", zap.Error(err))
+			h.handleStreamingAwareError(c, http.StatusBadGateway, "api_error", "Any2API proxy request failed", streamStarted)
+		} else {
+			h.recordAny2APIProxyUsage(c, apiKey, subscription, reqModel, proxyResult, GetInboundEndpoint(c), "/v1/responses")
+		}
+		return
+	}
 
 	userReleaseFunc, acquired := h.acquireResponsesUserSlot(c, subject.UserID, subject.Concurrency, reqStream, &streamStarted, reqLog)
 	if !acquired {
@@ -395,6 +472,7 @@ func (h *OpenAIGatewayHandler) Responses(c *gin.Context) {
 				IPAddress:          clientIP,
 				RequestPayloadHash: requestPayloadHash,
 				APIKeyService:      h.apiKeyService,
+				ChannelUsageFields: channelMapping.ToUsageFields(reqModel, result.UpstreamModel),
 			}); err != nil {
 				logger.L().With(
 					zap.String("component", "handler.openai_gateway.responses"),
@@ -507,11 +585,6 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		h.anthropicErrorResponse(c, http.StatusUnauthorized, "authentication_error", "Invalid API key")
 		return
 	}
-	gatewayPlatform := service.PlatformOpenAI
-	if apiKey.Group != nil && strings.TrimSpace(apiKey.Group.Platform) != "" {
-		gatewayPlatform = apiKey.Group.Platform
-	}
-	c.Request = c.Request.WithContext(service.WithOpenAICompatiblePlatform(c.Request.Context(), gatewayPlatform))
 
 	subject, ok := middleware2.GetAuthSubjectFromContext(c)
 	if !ok {
@@ -563,6 +636,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	}
 	reqModel := modelResult.String()
 	routingModel := service.NormalizeOpenAICompatRequestedModel(reqModel)
+	preferredMappedModel := resolveOpenAIMessagesDispatchMappedModel(apiKey, reqModel)
 	reqStream := gjson.GetBytes(body, "stream").Bool()
 
 	reqLog = reqLog.With(zap.String("model", reqModel), zap.Bool("stream", reqStream))
@@ -621,17 +695,20 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 	failedAccountIDs := make(map[int64]struct{})
 	sameAccountRetryCount := make(map[int64]int)
 	var lastFailoverErr *service.UpstreamFailoverError
+	effectiveMappedModel := preferredMappedModel
 
 	for {
-		// 清除上一次迭代的降级模型标记，避免残留影响本次迭代
-		c.Set("openai_messages_fallback_model", "")
+		currentRoutingModel := routingModel
+		if effectiveMappedModel != "" {
+			currentRoutingModel = effectiveMappedModel
+		}
 		reqLog.Debug("openai_messages.account_selecting", zap.Int("excluded_account_count", len(failedAccountIDs)))
 		selection, scheduleDecision, err := h.gatewayService.SelectAccountWithScheduler(
 			c.Request.Context(),
 			apiKey.GroupID,
 			"", // no previous_response_id
 			sessionHash,
-			routingModel,
+			currentRoutingModel,
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportAny,
 		)
@@ -640,29 +717,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 				zap.Error(err),
 				zap.Int("excluded_account_count", len(failedAccountIDs)),
 			)
-			// 首次调度失败 + 有默认映射模型 → 用默认模型重试
 			if len(failedAccountIDs) == 0 {
-				defaultModel := ""
-				if apiKey.Group != nil {
-					defaultModel = apiKey.Group.DefaultMappedModel
-				}
-				if defaultModel != "" && defaultModel != routingModel {
-					reqLog.Info("openai_messages.fallback_to_default_model",
-						zap.String("default_mapped_model", defaultModel),
-					)
-					selection, scheduleDecision, err = h.gatewayService.SelectAccountWithScheduler(
-						c.Request.Context(),
-						apiKey.GroupID,
-						"",
-						sessionHash,
-						defaultModel,
-						failedAccountIDs,
-						service.OpenAIUpstreamTransportAny,
-					)
-					if err == nil && selection != nil {
-						c.Set("openai_messages_fallback_model", defaultModel)
-					}
-				}
 				if err != nil {
 					h.anthropicStreamingAwareError(c, http.StatusServiceUnavailable, "api_error", "Service temporarily unavailable", streamStarted)
 					return
@@ -694,9 +749,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 		service.SetOpsLatencyMs(c, service.OpsRoutingLatencyMsKey, time.Since(routingStart).Milliseconds())
 		forwardStart := time.Now()
 
-		// Forward 层需要始终拿到 group 默认映射模型，这样未命中账号级映射的
-		// Claude 兼容模型才不会在后续 Codex 规范化中意外退化到 gpt-5.1。
-		defaultMappedModel := resolveOpenAIForwardDefaultMappedModel(apiKey, c.GetString("openai_messages_fallback_model"))
+		defaultMappedModel := strings.TrimSpace(effectiveMappedModel)
 		// 应用渠道模型映射到请求体
 		forwardBody := body
 		if channelMappingMsg.Mapped {
@@ -788,6 +841,7 @@ func (h *OpenAIGatewayHandler) Messages(c *gin.Context) {
 				IPAddress:          clientIP,
 				RequestPayloadHash: requestPayloadHash,
 				APIKeyService:      h.apiKeyService,
+				ChannelUsageFields: channelMappingMsg.ToUsageFields(reqModel, result.UpstreamModel),
 			}); err != nil {
 				logger.L().With(
 					zap.String("component", "handler.openai_gateway.messages"),
@@ -1291,6 +1345,7 @@ func (h *OpenAIGatewayHandler) ResponsesWebSocket(c *gin.Context) {
 					IPAddress:          clientIP,
 					RequestPayloadHash: service.HashUsageRequestPayload(firstMessage),
 					APIKeyService:      h.apiKeyService,
+					ChannelUsageFields: channelMappingWS.ToUsageFields(reqModel, result.UpstreamModel),
 				}); err != nil {
 					reqLog.Error("openai.websocket_record_usage_failed",
 						zap.Int64("account_id", account.ID),

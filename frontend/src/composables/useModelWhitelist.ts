@@ -32,13 +32,6 @@ const openaiModels = [
   'gpt-4o-audio-preview', 'gpt-4o-realtime-preview'
 ]
 
-const grokModels = [
-  'grok-4.20-0309-non-reasoning',
-  'grok-4.20-0309',
-  'grok-4.20-0309-reasoning',
-  'grok-imagine-image-lite'
-]
-
 // Anthropic Claude
 export const claudeModels = [
   'claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-20240620',
@@ -65,22 +58,6 @@ const geminiModels = [
   'gemini-2.5-pro',
   'gemini-3-flash-preview',
   'gemini-3-pro-preview'
-]
-
-// Sora
-const soraModels = [
-  'gpt-image', 'gpt-image-landscape', 'gpt-image-portrait',
-  'sora2-landscape-10s', 'sora2-portrait-10s',
-  'sora2-landscape-15s', 'sora2-portrait-15s',
-  'sora2-landscape-25s', 'sora2-portrait-25s',
-  'sora2pro-landscape-10s', 'sora2pro-portrait-10s',
-  'sora2pro-landscape-15s', 'sora2pro-portrait-15s',
-  'sora2pro-landscape-25s', 'sora2pro-portrait-25s',
-  'sora2pro-hd-landscape-10s', 'sora2pro-hd-portrait-10s',
-  'sora2pro-hd-landscape-15s', 'sora2pro-hd-portrait-15s',
-  'prompt-enhance-short-10s', 'prompt-enhance-short-15s', 'prompt-enhance-short-20s',
-  'prompt-enhance-medium-10s', 'prompt-enhance-medium-15s', 'prompt-enhance-medium-20s',
-  'prompt-enhance-long-10s', 'prompt-enhance-long-15s', 'prompt-enhance-long-20s'
 ]
 
 // Antigravity 官方支持的模型（精确匹配）
@@ -243,7 +220,6 @@ const allModelsList: string[] = [
   ...openaiModels,
   ...claudeModels,
   ...geminiModels,
-  ...soraModels,
   ...zhipuModels,
   ...qwenModels,
   ...deepseekModels,
@@ -295,15 +271,6 @@ const openaiPresetMappings = [
   { label: 'Opus→5.4', from: 'claude-opus-4-6', to: 'gpt-5.4', color: 'bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400' },
   { label: 'Sonnet→5.4', from: 'claude-sonnet-4-6', to: 'gpt-5.4', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400' }
 ]
-
-const grokPresetMappings = [
-  { label: 'Grok 4.20 0309 Non-Reasoning (Fast)', from: 'grok-4.20-0309-non-reasoning', to: 'grok-4.20-0309-non-reasoning', color: 'bg-fuchsia-100 text-fuchsia-700 hover:bg-fuchsia-200 dark:bg-fuchsia-900/30 dark:text-fuchsia-400' },
-  { label: 'Grok 4.20 0309 (Auto)', from: 'grok-4.20-0309', to: 'grok-4.20-0309', color: 'bg-pink-100 text-pink-700 hover:bg-pink-200 dark:bg-pink-900/30 dark:text-pink-400' },
-  { label: 'Grok 4.20 0309 Reasoning (Expert)', from: 'grok-4.20-0309-reasoning', to: 'grok-4.20-0309-reasoning', color: 'bg-rose-100 text-rose-700 hover:bg-rose-200 dark:bg-rose-900/30 dark:text-rose-400' },
-  { label: 'Grok Imagine Image Lite', from: 'grok-imagine-image-lite', to: 'grok-imagine-image-lite', color: 'bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-400' }
-]
-
-const soraPresetMappings: { label: string; from: string; to: string; color: string }[] = []
 
 const geminiPresetMappings = [
   { label: 'Flash 2.0', from: 'gemini-2.0-flash', to: 'gemini-2.0-flash', color: 'bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400' },
@@ -396,11 +363,9 @@ export const commonErrorCodes = [
 export function getModelsByPlatform(platform: string): string[] {
   switch (platform) {
     case 'openai': return openaiModels
-    case 'grok': return grokModels
     case 'anthropic':
     case 'claude': return claudeModels
     case 'gemini': return geminiModels
-    case 'sora': return soraModels
     case 'antigravity': return antigravityModels
     case 'zhipu': return zhipuModels
     case 'qwen': return qwenModels
@@ -424,9 +389,7 @@ export function getModelsByPlatform(platform: string): string[] {
 // 按平台获取预设映射
 export function getPresetMappingsByPlatform(platform: string) {
   if (platform === 'openai') return openaiPresetMappings
-  if (platform === 'grok') return grokPresetMappings
   if (platform === 'gemini') return geminiPresetMappings
-  if (platform === 'sora') return soraPresetMappings
   if (platform === 'antigravity') return antigravityPresetMappings
   if (platform === 'bedrock') return bedrockPresetMappings
   return anthropicPresetMappings

@@ -84,7 +84,7 @@ func NewGroupHandler(adminService service.AdminService, dashboardService *servic
 type CreateGroupRequest struct {
 	Name             string             `json:"name" binding:"required"`
 	Description      string             `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok gemini antigravity"`
+	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok qwen gemini antigravity"`
 	RateMultiplier   float64            `json:"rate_multiplier"`
 	IsExclusive      bool               `json:"is_exclusive"`
 	SubscriptionType string             `json:"subscription_type" binding:"omitempty,oneof=standard subscription"`
@@ -95,14 +95,6 @@ type CreateGroupRequest struct {
 	ImagePrice1K                    *float64 `json:"image_price_1k"`
 	ImagePrice2K                    *float64 `json:"image_price_2k"`
 	ImagePrice4K                    *float64 `json:"image_price_4k"`
-	GrokInputPricePerMTok           *float64 `json:"grok_input_price_per_mtok"`
-	GrokOutputPricePerMTok          *float64 `json:"grok_output_price_per_mtok"`
-	GrokImagePrice1K                *float64 `json:"grok_image_price_1k"`
-	GrokImagePrice2K                *float64 `json:"grok_image_price_2k"`
-	GrokVideoPrice5S                *float64 `json:"grok_video_price_5s"`
-	GrokVideoPrice10S               *float64 `json:"grok_video_price_10s"`
-	GrokVideoPrice15S               *float64 `json:"grok_video_price_15s"`
-	GrokVideoHighQualityMultiplier  *float64 `json:"grok_video_high_quality_multiplier"`
 	ClaudeCodeOnly                  bool     `json:"claude_code_only"`
 	FallbackGroupID                 *int64   `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
@@ -113,8 +105,11 @@ type CreateGroupRequest struct {
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string `json:"supported_model_scopes"`
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
-	AllowMessagesDispatch bool   `json:"allow_messages_dispatch"`
-	DefaultMappedModel    string `json:"default_mapped_model"`
+	AllowMessagesDispatch       bool                                      `json:"allow_messages_dispatch"`
+	RequireOAuthOnly            bool                                      `json:"require_oauth_only"`
+	RequirePrivacySet           bool                                      `json:"require_privacy_set"`
+	DefaultMappedModel          string                                    `json:"default_mapped_model"`
+	MessagesDispatchModelConfig service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
 	// 从指定分组复制账号（创建后自动绑定）
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
@@ -123,7 +118,7 @@ type CreateGroupRequest struct {
 type UpdateGroupRequest struct {
 	Name             string             `json:"name"`
 	Description      string             `json:"description"`
-	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok gemini antigravity"`
+	Platform         string             `json:"platform" binding:"omitempty,oneof=anthropic openai grok qwen gemini antigravity"`
 	RateMultiplier   *float64           `json:"rate_multiplier"`
 	IsExclusive      *bool              `json:"is_exclusive"`
 	Status           string             `json:"status" binding:"omitempty,oneof=active inactive"`
@@ -135,14 +130,6 @@ type UpdateGroupRequest struct {
 	ImagePrice1K                    *float64 `json:"image_price_1k"`
 	ImagePrice2K                    *float64 `json:"image_price_2k"`
 	ImagePrice4K                    *float64 `json:"image_price_4k"`
-	GrokInputPricePerMTok           *float64 `json:"grok_input_price_per_mtok"`
-	GrokOutputPricePerMTok          *float64 `json:"grok_output_price_per_mtok"`
-	GrokImagePrice1K                *float64 `json:"grok_image_price_1k"`
-	GrokImagePrice2K                *float64 `json:"grok_image_price_2k"`
-	GrokVideoPrice5S                *float64 `json:"grok_video_price_5s"`
-	GrokVideoPrice10S               *float64 `json:"grok_video_price_10s"`
-	GrokVideoPrice15S               *float64 `json:"grok_video_price_15s"`
-	GrokVideoHighQualityMultiplier  *float64 `json:"grok_video_high_quality_multiplier"`
 	ClaudeCodeOnly                  *bool    `json:"claude_code_only"`
 	FallbackGroupID                 *int64   `json:"fallback_group_id"`
 	FallbackGroupIDOnInvalidRequest *int64   `json:"fallback_group_id_on_invalid_request"`
@@ -153,8 +140,11 @@ type UpdateGroupRequest struct {
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string `json:"supported_model_scopes"`
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
-	AllowMessagesDispatch *bool   `json:"allow_messages_dispatch"`
-	DefaultMappedModel    *string `json:"default_mapped_model"`
+	AllowMessagesDispatch       *bool                                      `json:"allow_messages_dispatch"`
+	RequireOAuthOnly            *bool                                      `json:"require_oauth_only"`
+	RequirePrivacySet           *bool                                      `json:"require_privacy_set"`
+	DefaultMappedModel          *string                                    `json:"default_mapped_model"`
+	MessagesDispatchModelConfig *service.OpenAIMessagesDispatchModelConfig `json:"messages_dispatch_model_config"`
 	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
 	CopyAccountsFromGroupIDs []int64 `json:"copy_accounts_from_group_ids"`
 }
@@ -172,6 +162,8 @@ func (h *GroupHandler) List(c *gin.Context) {
 		search = search[:100]
 	}
 	isExclusiveStr := c.Query("is_exclusive")
+	sortBy := c.DefaultQuery("sort_by", "sort_order")
+	sortOrder := c.DefaultQuery("sort_order", "asc")
 
 	var isExclusive *bool
 	if isExclusiveStr != "" {
@@ -179,7 +171,7 @@ func (h *GroupHandler) List(c *gin.Context) {
 		isExclusive = &val
 	}
 
-	groups, total, err := h.adminService.ListGroups(c.Request.Context(), page, pageSize, platform, status, search, isExclusive)
+	groups, total, err := h.adminService.ListGroups(c.Request.Context(), page, pageSize, platform, status, search, isExclusive, sortBy, sortOrder)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
@@ -258,14 +250,6 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		ImagePrice1K:                    req.ImagePrice1K,
 		ImagePrice2K:                    req.ImagePrice2K,
 		ImagePrice4K:                    req.ImagePrice4K,
-		GrokInputPricePerMTok:           req.GrokInputPricePerMTok,
-		GrokOutputPricePerMTok:          req.GrokOutputPricePerMTok,
-		GrokImagePrice1K:                req.GrokImagePrice1K,
-		GrokImagePrice2K:                req.GrokImagePrice2K,
-		GrokVideoPrice5S:                req.GrokVideoPrice5S,
-		GrokVideoPrice10S:               req.GrokVideoPrice10S,
-		GrokVideoPrice15S:               req.GrokVideoPrice15S,
-		GrokVideoHighQualityMultiplier:  req.GrokVideoHighQualityMultiplier,
 		ClaudeCodeOnly:                  req.ClaudeCodeOnly,
 		FallbackGroupID:                 req.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: req.FallbackGroupIDOnInvalidRequest,
@@ -274,7 +258,10 @@ func (h *GroupHandler) Create(c *gin.Context) {
 		MCPXMLInject:                    req.MCPXMLInject,
 		SupportedModelScopes:            req.SupportedModelScopes,
 		AllowMessagesDispatch:           req.AllowMessagesDispatch,
+		RequireOAuthOnly:                req.RequireOAuthOnly,
+		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,
+		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
 	})
 	if err != nil {
@@ -314,14 +301,6 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		ImagePrice1K:                    req.ImagePrice1K,
 		ImagePrice2K:                    req.ImagePrice2K,
 		ImagePrice4K:                    req.ImagePrice4K,
-		GrokInputPricePerMTok:           req.GrokInputPricePerMTok,
-		GrokOutputPricePerMTok:          req.GrokOutputPricePerMTok,
-		GrokImagePrice1K:                req.GrokImagePrice1K,
-		GrokImagePrice2K:                req.GrokImagePrice2K,
-		GrokVideoPrice5S:                req.GrokVideoPrice5S,
-		GrokVideoPrice10S:               req.GrokVideoPrice10S,
-		GrokVideoPrice15S:               req.GrokVideoPrice15S,
-		GrokVideoHighQualityMultiplier:  req.GrokVideoHighQualityMultiplier,
 		ClaudeCodeOnly:                  req.ClaudeCodeOnly,
 		FallbackGroupID:                 req.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: req.FallbackGroupIDOnInvalidRequest,
@@ -330,7 +309,10 @@ func (h *GroupHandler) Update(c *gin.Context) {
 		MCPXMLInject:                    req.MCPXMLInject,
 		SupportedModelScopes:            req.SupportedModelScopes,
 		AllowMessagesDispatch:           req.AllowMessagesDispatch,
+		RequireOAuthOnly:                req.RequireOAuthOnly,
+		RequirePrivacySet:               req.RequirePrivacySet,
 		DefaultMappedModel:              req.DefaultMappedModel,
+		MessagesDispatchModelConfig:     req.MessagesDispatchModelConfig,
 		CopyAccountsFromGroupIDs:        req.CopyAccountsFromGroupIDs,
 	})
 	if err != nil {

@@ -3,7 +3,11 @@ package service
 import (
 	"strings"
 	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
+
+type OpenAIMessagesDispatchModelConfig = domain.OpenAIMessagesDispatchModelConfig
 
 type Group struct {
 	ID             int64
@@ -25,16 +29,6 @@ type Group struct {
 	ImagePrice1K *float64
 	ImagePrice2K *float64
 	ImagePrice4K *float64
-
-	// Grok 价格配置
-	GrokInputPricePerMTok          *float64
-	GrokOutputPricePerMTok         *float64
-	GrokImagePrice1K               *float64
-	GrokImagePrice2K               *float64
-	GrokVideoPrice5S               *float64
-	GrokVideoPrice10S              *float64
-	GrokVideoPrice15S              *float64
-	GrokVideoHighQualityMultiplier *float64
 
 	// Claude Code 客户端限制
 	ClaudeCodeOnly  bool
@@ -59,10 +53,11 @@ type Group struct {
 	SortOrder int
 
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
-	AllowMessagesDispatch bool
-	RequireOAuthOnly      bool // 仅允许非 apikey 类型账号关联（OpenAI/Antigravity/Anthropic/Gemini）
-	RequirePrivacySet     bool // 调度时仅允许 privacy 已成功设置的账号（OpenAI/Antigravity/Anthropic/Gemini）
-	DefaultMappedModel    string
+	AllowMessagesDispatch       bool
+	RequireOAuthOnly            bool // 仅允许非 apikey 类型账号关联（OpenAI/Antigravity/Anthropic/Gemini）
+	RequirePrivacySet           bool // 调度时仅允许 privacy 已成功设置的账号（OpenAI/Antigravity/Anthropic/Gemini）
+	DefaultMappedModel          string
+	MessagesDispatchModelConfig OpenAIMessagesDispatchModelConfig
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -110,28 +105,6 @@ func (g *Group) GetImagePrice(imageSize string) *float64 {
 	default:
 		// 未知尺寸默认按 2K 计费
 		return g.ImagePrice2K
-	}
-}
-
-func (g *Group) GetGrokImagePrice(imageSize string) *float64 {
-	switch imageSize {
-	case "1K":
-		return g.GrokImagePrice1K
-	case "2K":
-		return g.GrokImagePrice2K
-	default:
-		return g.GrokImagePrice2K
-	}
-}
-
-func (g *Group) GetGrokVideoPrice(seconds int) *float64 {
-	switch {
-	case seconds >= 15:
-		return g.GrokVideoPrice15S
-	case seconds >= 10:
-		return g.GrokVideoPrice10S
-	default:
-		return g.GrokVideoPrice5S
 	}
 }
 

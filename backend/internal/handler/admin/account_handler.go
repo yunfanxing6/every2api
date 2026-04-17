@@ -56,10 +56,16 @@ type AccountHandler struct {
 	accountTestService      *service.AccountTestService
 	concurrencyService      *service.ConcurrencyService
 	crsSyncService          *service.CRSSyncService
+	any2apiClient           *service.Any2APIClient
 	sessionLimitCache       service.SessionLimitCache
 	rpmCache                service.RPMCache
 	tokenCacheInvalidator   service.TokenCacheInvalidator
 }
+
+const (
+	syntheticAny2APIAccountIDGrok int64 = -1001
+	syntheticAny2APIAccountIDQwen int64 = -1002
+)
 
 // NewAccountHandler creates a new admin account handler
 func NewAccountHandler(
@@ -73,6 +79,7 @@ func NewAccountHandler(
 	accountTestService *service.AccountTestService,
 	concurrencyService *service.ConcurrencyService,
 	crsSyncService *service.CRSSyncService,
+	any2apiClient *service.Any2APIClient,
 	sessionLimitCache service.SessionLimitCache,
 	rpmCache service.RPMCache,
 	tokenCacheInvalidator service.TokenCacheInvalidator,
@@ -88,10 +95,307 @@ func NewAccountHandler(
 		accountTestService:      accountTestService,
 		concurrencyService:      concurrencyService,
 		crsSyncService:          crsSyncService,
+		any2apiClient:           any2apiClient,
 		sessionLimitCache:       sessionLimitCache,
 		rpmCache:                rpmCache,
 		tokenCacheInvalidator:   tokenCacheInvalidator,
 	}
+}
+
+func normalizeAny2APIProvider(provider string) string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case service.PlatformGrok, "xai":
+		return service.PlatformGrok
+	case service.PlatformQwen, "tongyi", "alibaba", "aliyun":
+		return service.PlatformQwen
+	default:
+		return strings.ToLower(strings.TrimSpace(provider))
+	}
+}
+
+func any2apiManagedProviderMetadata(provider string) (id int64, platform, name, label string, ok bool) {
+	switch normalizeAny2APIProvider(provider) {
+	case service.PlatformGrok:
+		return syntheticAny2APIAccountIDGrok, service.PlatformGrok, "grok2api-upstream", "Grok", true
+	case service.PlatformQwen:
+		return syntheticAny2APIAccountIDQwen, service.PlatformQwen, "qwen2api-upstream", "Qwen", true
+	default:
+		return 0, "", "", "", false
+	}
+}
+
+func any2apiSyntheticAccountProvider(accountID int64) (string, bool) {
+	switch accountID {
+	case syntheticAny2APIAccountIDGrok:
+		return service.PlatformGrok, true
+	case syntheticAny2APIAccountIDQwen:
+		return service.PlatformQwen, true
+	default:
+		return "", false
+	}
+}
+
+func any2apiManagedProviders() []string {
+	return []string{service.PlatformGrok, service.PlatformQwen}
+}
+
+func findAny2APIManagedAccountIndex(accounts []service.Account, provider string) int {
+	provider = normalizeAny2APIProvider(provider)
+	_, platform, name, _, ok := any2apiManagedProviderMetadata(provider)
+	if !ok {
+		return -1
+	}
+	for i, account := range accounts {
+		if normalizeAny2APIProvider(account.Platform) != platform {
+			continue
+		}
+		if account.Type == service.AccountTypeAPIKey {
+			return i
+		}
+		if strings.EqualFold(strings.TrimSpace(account.Name), name) {
+			return i
+		}
+		if extraProvider, _ := account.Extra["provider"].(string); normalizeAny2APIProvider(extraProvider) == provider {
+			return i
+		}
+	}
+	return -1
+}
+
+func any2apiManagedProviderFromAccount(account *service.Account) (string, bool) {
+	if account == nil {
+		return "", false
+	}
+	if provider := normalizeAny2APIProvider(account.Platform); account.Type == service.AccountTypeAPIKey && (provider == service.PlatformGrok || provider == service.PlatformQwen) {
+		return provider, true
+	}
+	if extraProvider, _ := account.Extra["provider"].(string); normalizeAny2APIProvider(extraProvider) != "" {
+		provider := normalizeAny2APIProvider(extraProvider)
+		if provider == service.PlatformGrok || provider == service.PlatformQwen {
+			return provider, true
+		}
+	}
+	for _, provider := range any2apiManagedProviders() {
+		_, platform, name, _, ok := any2apiManagedProviderMetadata(provider)
+		if !ok {
+			continue
+		}
+		if normalizeAny2APIProvider(account.Platform) == platform && strings.EqualFold(strings.TrimSpace(account.Name), name) {
+			return provider, true
+		}
+	}
+	return "", false
+}
+
+func any2apiManagedSearchMatched(search, name, platform, provider string) bool {
+	needle := strings.ToLower(strings.TrimSpace(search))
+	if needle == "" {
+		return true
+	}
+	_, _, _, label, _ := any2apiManagedProviderMetadata(provider)
+	haystack := strings.ToLower(strings.Join([]string{name, platform, provider, provider + "2api", label, "any2api", "upstream"}, " "))
+	return strings.Contains(haystack, needle)
+}
+
+func buildAny2APIManagedAccount(summary service.Any2APISummary, provider string) *service.Account {
+	id, platform, name, _, ok := any2apiManagedProviderMetadata(provider)
+	if !ok {
+		return nil
+	}
+	provider = normalizeAny2APIProvider(provider)
+	status := service.StatusError
+	errorMessage := summary.Error
+	if summary.ProviderConnected(provider) {
+		status = service.StatusActive
+		errorMessage = ""
+	}
+	now := time.Now()
+	baseURL := strings.TrimRight(strings.TrimSpace(summary.BaseURL), "/")
+	return &service.Account{
+		ID:          id,
+		Name:        name,
+		Platform:    platform,
+		Type:        service.AccountTypeAPIKey,
+		Credentials: map[string]any{"base_url": baseURL, "managed_by": "any2api"},
+		Extra: map[string]any{
+			"any2api_managed": true,
+			"readonly":        true,
+			"provider":        provider,
+			"display_name":    name,
+		},
+		Concurrency:  1000,
+		Priority:     1,
+		Status:       status,
+		ErrorMessage: errorMessage,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+		Schedulable:  status == service.StatusActive,
+	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func any2apiModelMatchesProvider(model service.Any2APIModel, provider string) bool {
+	provider = normalizeAny2APIProvider(provider)
+	ownedBy := normalizeAny2APIProvider(model.OwnedBy)
+	id := strings.ToLower(strings.TrimSpace(model.ID))
+	if ownedBy == provider {
+		return true
+	}
+	switch provider {
+	case service.PlatformGrok:
+		return strings.HasPrefix(id, "grok")
+	case service.PlatformQwen:
+		return strings.HasPrefix(id, "qwen")
+	default:
+		return false
+	}
+}
+
+func (h *AccountHandler) any2apiAvailableModels(ctx context.Context, provider string) []openai.Model {
+	if h == nil || h.any2apiClient == nil || !h.any2apiClient.Enabled() {
+		return nil
+	}
+	provider = normalizeAny2APIProvider(provider)
+	models, err := h.any2apiClient.ListModels(ctx)
+	if err != nil {
+		return nil
+	}
+	out := make([]openai.Model, 0, len(models))
+	for _, model := range models {
+		if !any2apiModelMatchesProvider(model, provider) {
+			continue
+		}
+		ownedBy := normalizeAny2APIProvider(firstNonEmpty(model.OwnedBy, provider))
+		if ownedBy == "" {
+			ownedBy = provider
+		}
+		out = append(out, openai.Model{
+			ID:          model.ID,
+			Object:      firstNonEmpty(model.Object, "model"),
+			OwnedBy:     ownedBy,
+			Type:        "model",
+			DisplayName: firstNonEmpty(model.DisplayName, model.Name, model.ID),
+		})
+	}
+	return out
+}
+
+func writeSSEHeaders(c *gin.Context) {
+	c.Writer.Header().Set("Content-Type", "text/event-stream")
+	c.Writer.Header().Set("Cache-Control", "no-cache")
+	c.Writer.Header().Set("Connection", "keep-alive")
+	c.Writer.Header().Set("X-Accel-Buffering", "no")
+	c.Writer.Flush()
+}
+
+func writeSSEEvent(c *gin.Context, payload map[string]any) {
+	data, _ := json.Marshal(payload)
+	_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+	c.Writer.Flush()
+}
+
+func (h *AccountHandler) testAny2APIManagedProvider(c *gin.Context, provider string, req TestAccountRequest) bool {
+	if h == nil || h.any2apiClient == nil || !h.any2apiClient.Enabled() {
+		writeSSEHeaders(c)
+		writeSSEEvent(c, map[string]any{"type": "error", "error": "Any2API integration is not enabled"})
+		return true
+	}
+	provider = normalizeAny2APIProvider(provider)
+	models := h.any2apiAvailableModels(c.Request.Context(), provider)
+	_, _, _, label, _ := any2apiManagedProviderMetadata(provider)
+	if len(models) == 0 {
+		writeSSEHeaders(c)
+		writeSSEEvent(c, map[string]any{"type": "error", "error": fmt.Sprintf("No available %s test models", label)})
+		return true
+	}
+
+	modelID := strings.TrimSpace(req.ModelID)
+	if modelID == "" {
+		modelID = models[0].ID
+	}
+	prompt := strings.TrimSpace(req.Prompt)
+	if prompt == "" {
+		prompt = "hi"
+	}
+
+	writeSSEHeaders(c)
+	writeSSEEvent(c, map[string]any{"type": "test_start", "model": modelID})
+	result, err := h.any2apiClient.TestConnection(c.Request.Context(), modelID, prompt)
+	if err != nil {
+		writeSSEEvent(c, map[string]any{"type": "error", "error": err.Error()})
+		return true
+	}
+	writeSSEEvent(c, map[string]any{"type": "content", "text": result.Text})
+	writeSSEEvent(c, map[string]any{"type": "test_complete", "success": true, "model": result.Model})
+	return true
+}
+
+func (h *AccountHandler) testSyntheticAny2APIManagedAccount(c *gin.Context, accountID int64, req TestAccountRequest) bool {
+	provider, ok := any2apiSyntheticAccountProvider(accountID)
+	if !ok {
+		return false
+	}
+	return h.testAny2APIManagedProvider(c, provider, req)
+}
+
+func (h *AccountHandler) maybeAppendAny2APIManagedAccounts(ctx context.Context, accounts []service.Account, total int64, page, pageSize int, platform, accountType, status, search string, groupID int64) ([]service.Account, int64) {
+	if h == nil || h.any2apiClient == nil || !h.any2apiClient.Enabled() {
+		return accounts, total
+	}
+	if page > 1 {
+		return accounts, total
+	}
+	if groupID != 0 && groupID != service.AccountListGroupUngrouped {
+		return accounts, total
+	}
+	platform = strings.TrimSpace(platform)
+	accountType = strings.TrimSpace(accountType)
+	status = strings.TrimSpace(status)
+	search = strings.TrimSpace(search)
+	if platform != "" && platform != service.PlatformQwen {
+		return accounts, total
+	}
+	if accountType != "" && accountType != service.AccountTypeAPIKey {
+		return accounts, total
+	}
+	summary := h.any2apiClient.Summary(ctx)
+	if !summary.Enabled {
+		return accounts, total
+	}
+	matchedTotal := int64(0)
+	for _, provider := range any2apiManagedProviders() {
+		if platform != "" && platform != provider {
+			continue
+		}
+		account := buildAny2APIManagedAccount(summary, provider)
+		if account == nil {
+			continue
+		}
+		if !any2apiManagedSearchMatched(search, account.Name, account.Platform, provider) {
+			continue
+		}
+		if status != "" && status != account.Status {
+			continue
+		}
+		if existingIndex := findAny2APIManagedAccountIndex(accounts, provider); existingIndex >= 0 {
+			accounts[existingIndex] = *account
+			continue
+		}
+		matchedTotal++
+		if pageSize <= 0 || len(accounts) < pageSize {
+			accounts = append(accounts, *account)
+		}
+	}
+	return accounts, total + matchedTotal
 }
 
 // CreateAccountRequest represents create account request
@@ -222,6 +526,8 @@ func (h *AccountHandler) List(c *gin.Context) {
 	status := c.Query("status")
 	search := c.Query("search")
 	privacyMode := strings.TrimSpace(c.Query("privacy_mode"))
+	sortBy := c.DefaultQuery("sort_by", "name")
+	sortOrder := c.DefaultQuery("sort_order", "asc")
 	// 标准化和验证 search 参数
 	search = strings.TrimSpace(search)
 	if len(search) > 100 {
@@ -247,11 +553,12 @@ func (h *AccountHandler) List(c *gin.Context) {
 		}
 	}
 
-	accounts, total, err := h.adminService.ListAccounts(c.Request.Context(), page, pageSize, platform, accountType, status, search, groupID, privacyMode)
+	accounts, total, err := h.adminService.ListAccounts(c.Request.Context(), page, pageSize, platform, accountType, status, search, groupID, privacyMode, sortBy, sortOrder)
 	if err != nil {
 		response.ErrorFrom(c, err)
 		return
 	}
+	accounts, total = h.maybeAppendAny2APIManagedAccounts(c.Request.Context(), accounts, total, page, pageSize, platform, accountType, status, search, groupID)
 
 	// Get current concurrency counts for all accounts
 	accountIDs := make([]int64, len(accounts))
@@ -681,6 +988,15 @@ func (h *AccountHandler) Test(c *gin.Context) {
 	_ = c.ShouldBindJSON(&req)
 
 	// Use AccountTestService to test the account with SSE streaming
+	if h.testSyntheticAny2APIManagedAccount(c, accountID, req) {
+		return
+	}
+	if account, err := h.adminService.GetAccount(c.Request.Context(), accountID); err == nil {
+		if provider, ok := any2apiManagedProviderFromAccount(account); ok {
+			h.testAny2APIManagedProvider(c, provider, req)
+			return
+		}
+	}
 	if err := h.accountTestService.TestAccountConnection(c, accountID, req.ModelID, req.Prompt); err != nil {
 		// Error already sent via SSE, just log
 		return
@@ -1411,6 +1727,12 @@ func (h *AccountHandler) BulkUpdate(c *gin.Context) {
 			c.JSON(409, gin.H{
 				"error":   "mixed_channel_warning",
 				"message": mixedErr.Error(),
+				"details": gin.H{
+					"group_id":         mixedErr.GroupID,
+					"group_name":       mixedErr.GroupName,
+					"current_platform": mixedErr.CurrentPlatform,
+					"other_platform":   mixedErr.OtherPlatform,
+				},
 			})
 			return
 		}
@@ -1787,43 +2109,45 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 		return
 	}
 
+	if provider, ok := any2apiSyntheticAccountProvider(accountID); ok {
+		response.Success(c, h.any2apiAvailableModels(c.Request.Context(), provider))
+		return
+	}
+
 	account, err := h.adminService.GetAccount(c.Request.Context(), accountID)
 	if err != nil {
 		response.NotFound(c, "Account not found")
 		return
 	}
+	if provider, ok := any2apiManagedProviderFromAccount(account); ok {
+		models := h.any2apiAvailableModels(c.Request.Context(), provider)
+		if len(models) == 0 && provider == service.PlatformGrok {
+			response.Success(c, grok.DefaultModels)
+			return
+		}
+		response.Success(c, models)
+		return
+	}
 
 	// Handle OpenAI accounts
-	if account.IsOpenAICompatible() {
+	if account.IsOpenAI() {
 		// OpenAI 自动透传会绕过常规模型改写，测试/模型列表也应回落到默认模型集。
 		if account.IsOpenAIPassthroughEnabled() {
-			if account.IsGrok() {
-				response.Success(c, grok.DefaultModels)
-				return
-			}
 			response.Success(c, openai.DefaultModels)
 			return
 		}
 
 		mapping := account.GetModelMapping()
 		if len(mapping) == 0 {
-			if account.IsGrok() {
-				response.Success(c, grok.DefaultModels)
-				return
-			}
 			response.Success(c, openai.DefaultModels)
 			return
 		}
 
 		// Return mapped models
 		var models []openai.Model
-		catalog := openai.DefaultModels
-		if account.IsGrok() {
-			catalog = grok.DefaultModels
-		}
 		for requestedModel := range mapping {
 			var found bool
-			for _, dm := range catalog {
+			for _, dm := range openai.DefaultModels {
 				if dm.ID == requestedModel {
 					models = append(models, dm)
 					found = true
@@ -1840,6 +2164,46 @@ func (h *AccountHandler) GetAvailableModels(c *gin.Context) {
 			}
 		}
 		response.Success(c, models)
+		return
+	}
+
+	if account.Platform == service.PlatformGrok {
+		rawMapping := map[string]any(nil)
+		if account.Credentials != nil {
+			rawMapping, _ = account.Credentials["model_mapping"].(map[string]any)
+		}
+		if len(rawMapping) == 0 {
+			response.Success(c, grok.DefaultModels)
+			return
+		}
+		mapping := account.GetModelMapping()
+
+		var models []openai.Model
+		for requestedModel := range mapping {
+			var found bool
+			for _, dm := range grok.DefaultModels {
+				if dm.ID == requestedModel {
+					models = append(models, dm)
+					found = true
+					break
+				}
+			}
+			if !found {
+				models = append(models, openai.Model{
+					ID:          requestedModel,
+					Object:      "model",
+					Type:        "model",
+					OwnedBy:     "xai",
+					DisplayName: requestedModel,
+				})
+			}
+		}
+		response.Success(c, models)
+		return
+	}
+
+	if account.Platform == service.PlatformQwen {
+		response.Success(c, h.any2apiAvailableModels(c.Request.Context(), service.PlatformQwen))
 		return
 	}
 
@@ -2042,7 +2406,7 @@ func (h *AccountHandler) BatchRefreshTier(c *gin.Context) {
 	accounts := make([]*service.Account, 0)
 
 	if len(req.AccountIDs) == 0 {
-		allAccounts, _, err := h.adminService.ListAccounts(ctx, 1, 10000, "gemini", "oauth", "", "", 0, "")
+		allAccounts, _, err := h.adminService.ListAccounts(ctx, 1, 10000, "gemini", "oauth", "", "", 0, "", "name", "asc")
 		if err != nil {
 			response.ErrorFrom(c, err)
 			return

@@ -13,18 +13,14 @@ import (
 const (
 	TaskTypeVerifyCode    = "verify_code"
 	TaskTypePasswordReset = "password_reset"
-	TaskTypeLowBalance    = "low_balance"
-	TaskTypeBalanceEmpty  = "balance_empty"
 )
 
 // EmailTask 邮件发送任务
 type EmailTask struct {
-	Email          string
-	SiteName       string
-	TaskType       string
-	ResetURL       string
-	SiteURL        string
-	CurrentBalance float64
+	Email    string
+	SiteName string
+	TaskType string // "verify_code" or "password_reset"
+	ResetURL string // Only used for password_reset task type
 }
 
 // EmailQueueService 异步邮件队列服务
@@ -97,18 +93,6 @@ func (s *EmailQueueService) processTask(workerID int, task EmailTask) {
 		} else {
 			logger.LegacyPrintf("service.email_queue", "[EmailQueue] Worker %d sent password reset to %s", workerID, task.Email)
 		}
-	case TaskTypeLowBalance:
-		if err := s.emailService.SendLowBalanceAlert(ctx, task.Email, task.SiteName, task.SiteURL, task.CurrentBalance); err != nil {
-			logger.LegacyPrintf("service.email_queue", "[EmailQueue] Worker %d failed to send low balance email to %s: %v", workerID, task.Email, err)
-		} else {
-			logger.LegacyPrintf("service.email_queue", "[EmailQueue] Worker %d sent low balance email to %s", workerID, task.Email)
-		}
-	case TaskTypeBalanceEmpty:
-		if err := s.emailService.SendBalanceDepletedAlert(ctx, task.Email, task.SiteName, task.SiteURL, task.CurrentBalance); err != nil {
-			logger.LegacyPrintf("service.email_queue", "[EmailQueue] Worker %d failed to send balance exhausted email to %s: %v", workerID, task.Email, err)
-		} else {
-			logger.LegacyPrintf("service.email_queue", "[EmailQueue] Worker %d sent balance exhausted email to %s", workerID, task.Email)
-		}
 	default:
 		logger.LegacyPrintf("service.email_queue", "[EmailQueue] Worker %d unknown task type: %s", workerID, task.TaskType)
 	}
@@ -143,42 +127,6 @@ func (s *EmailQueueService) EnqueuePasswordReset(email, siteName, resetURL strin
 	select {
 	case s.taskChan <- task:
 		logger.LegacyPrintf("service.email_queue", "[EmailQueue] Enqueued password reset task for %s", email)
-		return nil
-	default:
-		return fmt.Errorf("email queue is full")
-	}
-}
-
-func (s *EmailQueueService) EnqueueLowBalance(email, siteName, siteURL string, currentBalance float64) error {
-	task := EmailTask{
-		Email:          email,
-		SiteName:       siteName,
-		TaskType:       TaskTypeLowBalance,
-		SiteURL:        siteURL,
-		CurrentBalance: currentBalance,
-	}
-
-	select {
-	case s.taskChan <- task:
-		logger.LegacyPrintf("service.email_queue", "[EmailQueue] Enqueued low balance task for %s", email)
-		return nil
-	default:
-		return fmt.Errorf("email queue is full")
-	}
-}
-
-func (s *EmailQueueService) EnqueueBalanceDepleted(email, siteName, siteURL string, currentBalance float64) error {
-	task := EmailTask{
-		Email:          email,
-		SiteName:       siteName,
-		TaskType:       TaskTypeBalanceEmpty,
-		SiteURL:        siteURL,
-		CurrentBalance: currentBalance,
-	}
-
-	select {
-	case s.taskChan <- task:
-		logger.LegacyPrintf("service.email_queue", "[EmailQueue] Enqueued balance exhausted task for %s", email)
 		return nil
 	default:
 		return fmt.Errorf("email queue is full")

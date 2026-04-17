@@ -15,11 +15,13 @@ import (
 
 type adminUsageRepoCapture struct {
 	service.UsageLogRepository
+	listParams   pagination.PaginationParams
 	listFilters  usagestats.UsageLogFilters
 	statsFilters usagestats.UsageLogFilters
 }
 
 func (s *adminUsageRepoCapture) ListWithFilters(ctx context.Context, params pagination.PaginationParams, filters usagestats.UsageLogFilters) ([]service.UsageLog, *pagination.PaginationResult, error) {
+	s.listParams = params
 	s.listFilters = filters
 	return []service.UsageLog{}, &pagination.PaginationResult{
 		Total:    0,
@@ -36,7 +38,7 @@ func (s *adminUsageRepoCapture) GetStatsWithFilters(ctx context.Context, filters
 
 func newAdminUsageRequestTypeTestRouter(repo *adminUsageRepoCapture) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	usageSvc := service.NewUsageService(repo, nil, nil, nil, nil, nil)
+	usageSvc := service.NewUsageService(repo, nil, nil, nil)
 	handler := NewUsageHandler(usageSvc, nil, nil, nil)
 	router := gin.New()
 	router.GET("/admin/usage", handler.List)

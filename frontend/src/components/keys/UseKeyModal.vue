@@ -180,7 +180,6 @@ const activeClientTab = ref<string>('claude')
 const defaultClientTab = computed(() => {
   switch (props.platform) {
     case 'openai':
-    case 'grok':
       return 'codex'
     case 'gemini':
       return 'gemini'
@@ -267,8 +266,7 @@ const SparkleIcon = {
 const clientTabs = computed((): TabConfig[] => {
   if (!props.platform) return []
   switch (props.platform) {
-    case 'openai':
-    case 'grok': {
+    case 'openai': {
       const tabs: TabConfig[] = [
         { id: 'codex', label: t('keys.useKeyModal.cliTabs.codexCli'), icon: TerminalIcon },
         { id: 'codex-ws', label: t('keys.useKeyModal.cliTabs.codexCliWs'), icon: TerminalIcon },
@@ -324,7 +322,6 @@ const currentTabs = computed(() => {
 const platformDescription = computed(() => {
   switch (props.platform) {
     case 'openai':
-    case 'grok':
       if (activeClientTab.value === 'claude') {
         return t('keys.useKeyModal.description')
       }
@@ -341,7 +338,6 @@ const platformDescription = computed(() => {
 const platformNote = computed(() => {
   switch (props.platform) {
     case 'openai':
-    case 'grok':
       if (activeClientTab.value === 'claude') {
         return t('keys.useKeyModal.note')
       }
@@ -399,15 +395,13 @@ const currentFiles = computed((): FileConfig[] => {
   })()
 
   if (activeClientTab.value === 'opencode') {
-      switch (props.platform) {
-        case 'anthropic':
-          return [generateOpenCodeConfig('anthropic', apiBase, apiKey)]
-        case 'openai':
-          return [generateOpenCodeConfig('openai', apiBase, apiKey)]
-        case 'grok':
-          return [generateOpenCodeConfig('grok', apiBase, apiKey)]
-        case 'gemini':
-          return [generateOpenCodeConfig('gemini', geminiBase, apiKey)]
+    switch (props.platform) {
+      case 'anthropic':
+        return [generateOpenCodeConfig('anthropic', apiBase, apiKey)]
+      case 'openai':
+        return [generateOpenCodeConfig('openai', apiBase, apiKey)]
+      case 'gemini':
+        return [generateOpenCodeConfig('gemini', geminiBase, apiKey)]
       case 'antigravity':
         return [
           generateOpenCodeConfig('antigravity-claude', antigravityBase, apiKey, 'opencode.json (Claude)'),
@@ -420,7 +414,6 @@ const currentFiles = computed((): FileConfig[] => {
 
   switch (props.platform) {
     case 'openai':
-    case 'grok':
       if (activeClientTab.value === 'claude') {
         return generateAnthropicFiles(baseUrl, apiKey)
       }
@@ -812,60 +805,6 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
       }
     }
   }
-  const grokModels = {
-    'grok-4.20-0309-non-reasoning': {
-      name: 'Grok 4.20 0309 Non-Reasoning (Fast)',
-      limit: {
-        context: 262144,
-        output: 32768
-      },
-      options: {
-        store: false
-      },
-      variants: {
-        low: {},
-        medium: {},
-        high: {}
-      }
-    },
-    'grok-4.20-0309': {
-      name: 'Grok 4.20 0309 (Auto)',
-      limit: {
-        context: 262144,
-        output: 32768
-      },
-      options: {
-        store: false
-      },
-      variants: {
-        low: {},
-        medium: {},
-        high: {}
-      }
-    },
-    'grok-4.20-0309-reasoning': {
-      name: 'Grok 4.20 0309 Reasoning (Expert)',
-      limit: {
-        context: 262144,
-        output: 32768
-      },
-      options: {
-        store: false
-      },
-      variants: {
-        low: {},
-        medium: {},
-        high: {}
-      }
-    },
-    'grok-imagine-image-lite': {
-      name: 'Grok Imagine Image Lite',
-      modalities: {
-        input: ['text'],
-        output: ['image']
-      }
-    }
-  }
   const geminiModels = {
     'gemini-2.0-flash': {
       name: 'Gemini 2.0 Flash',
@@ -1133,10 +1072,6 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
     provider[platform].models = geminiModels
   } else if (platform === 'anthropic') {
     provider[platform].npm = '@ai-sdk/anthropic'
-  } else if (platform === 'grok') {
-    provider[platform].name = 'Grok'
-    provider[platform].npm = '@ai-sdk/openai-compatible'
-    provider[platform].models = grokModels
   } else if (platform === 'antigravity-claude') {
     provider[platform].npm = '@ai-sdk/anthropic'
     provider[platform].name = 'Antigravity (Claude)'
@@ -1150,7 +1085,7 @@ function generateOpenCodeConfig(platform: string, baseUrl: string, apiKey: strin
   }
 
   const agent =
-    platform === 'openai' || platform === 'grok'
+    platform === 'openai'
       ? {
           build: {
             options: {

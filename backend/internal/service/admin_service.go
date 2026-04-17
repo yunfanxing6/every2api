@@ -21,13 +21,13 @@ import (
 // AdminService interface defines admin management operations
 type AdminService interface {
 	// User management
-	ListUsers(ctx context.Context, page, pageSize int, filters UserListFilters) ([]User, int64, error)
+	ListUsers(ctx context.Context, page, pageSize int, filters UserListFilters, sortBy, sortOrder string) ([]User, int64, error)
 	GetUser(ctx context.Context, id int64) (*User, error)
 	CreateUser(ctx context.Context, input *CreateUserInput) (*User, error)
 	UpdateUser(ctx context.Context, id int64, input *UpdateUserInput) (*User, error)
 	DeleteUser(ctx context.Context, id int64) error
 	UpdateUserBalance(ctx context.Context, userID int64, balance float64, operation string, notes string) (*User, error)
-	GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int) ([]APIKey, int64, error)
+	GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error)
 	GetUserUsageStats(ctx context.Context, userID int64, period string) (any, error)
 	// GetUserBalanceHistory returns paginated balance/concurrency change records for a user.
 	// codeType is optional - pass empty string to return all types.
@@ -35,7 +35,7 @@ type AdminService interface {
 	GetUserBalanceHistory(ctx context.Context, userID int64, page, pageSize int, codeType string) ([]RedeemCode, int64, float64, error)
 
 	// Group management
-	ListGroups(ctx context.Context, page, pageSize int, platform, status, search string, isExclusive *bool) ([]Group, int64, error)
+	ListGroups(ctx context.Context, page, pageSize int, platform, status, search string, isExclusive *bool, sortBy, sortOrder string) ([]Group, int64, error)
 	GetAllGroups(ctx context.Context) ([]Group, error)
 	GetAllGroupsByPlatform(ctx context.Context, platform string) ([]Group, error)
 	GetGroup(ctx context.Context, id int64) (*Group, error)
@@ -55,7 +55,7 @@ type AdminService interface {
 	ReplaceUserGroup(ctx context.Context, userID, oldGroupID, newGroupID int64) (*ReplaceUserGroupResult, error)
 
 	// Account management
-	ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string) ([]Account, int64, error)
+	ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Account, int64, error)
 	GetAccount(ctx context.Context, id int64) (*Account, error)
 	GetAccountsByIDs(ctx context.Context, ids []int64) ([]*Account, error)
 	CreateAccount(ctx context.Context, input *CreateAccountInput) (*Account, error)
@@ -77,8 +77,8 @@ type AdminService interface {
 	CheckMixedChannelRisk(ctx context.Context, currentAccountID int64, currentAccountPlatform string, groupIDs []int64) error
 
 	// Proxy management
-	ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string) ([]Proxy, int64, error)
-	ListProxiesWithAccountCount(ctx context.Context, page, pageSize int, protocol, status, search string) ([]ProxyWithAccountCount, int64, error)
+	ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]Proxy, int64, error)
+	ListProxiesWithAccountCount(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]ProxyWithAccountCount, int64, error)
 	GetAllProxies(ctx context.Context) ([]Proxy, error)
 	GetAllProxiesWithAccountCount(ctx context.Context) ([]ProxyWithAccountCount, error)
 	GetProxy(ctx context.Context, id int64) (*Proxy, error)
@@ -93,7 +93,7 @@ type AdminService interface {
 	CheckProxyQuality(ctx context.Context, id int64) (*ProxyQualityCheckResult, error)
 
 	// Redeem code management
-	ListRedeemCodes(ctx context.Context, page, pageSize int, codeType, status, search string) ([]RedeemCode, int64, error)
+	ListRedeemCodes(ctx context.Context, page, pageSize int, codeType, status, search string, sortBy, sortOrder string) ([]RedeemCode, int64, error)
 	GetRedeemCode(ctx context.Context, id int64) (*RedeemCode, error)
 	GenerateRedeemCodes(ctx context.Context, input *GenerateRedeemCodesInput) ([]RedeemCode, error)
 	DeleteRedeemCode(ctx context.Context, id int64) error
@@ -138,19 +138,11 @@ type CreateGroupInput struct {
 	WeeklyLimitUSD   *float64 // 周限额 (USD)
 	MonthlyLimitUSD  *float64 // 月限额 (USD)
 	// 图片生成计费配置（仅 antigravity 平台使用）
-	ImagePrice1K                   *float64
-	ImagePrice2K                   *float64
-	ImagePrice4K                   *float64
-	GrokInputPricePerMTok          *float64
-	GrokOutputPricePerMTok         *float64
-	GrokImagePrice1K               *float64
-	GrokImagePrice2K               *float64
-	GrokVideoPrice5S               *float64
-	GrokVideoPrice10S              *float64
-	GrokVideoPrice15S              *float64
-	GrokVideoHighQualityMultiplier *float64
-	ClaudeCodeOnly                 bool   // 仅允许 Claude Code 客户端
-	FallbackGroupID                *int64 // 降级分组 ID
+	ImagePrice1K    *float64
+	ImagePrice2K    *float64
+	ImagePrice4K    *float64
+	ClaudeCodeOnly  bool   // 仅允许 Claude Code 客户端
+	FallbackGroupID *int64 // 降级分组 ID
 	// 无效请求兜底分组 ID（仅 anthropic 平台使用）
 	FallbackGroupIDOnInvalidRequest *int64
 	// 模型路由配置（仅 anthropic 平台使用）
@@ -160,10 +152,11 @@ type CreateGroupInput struct {
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes []string
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
-	AllowMessagesDispatch bool
-	DefaultMappedModel    string
-	RequireOAuthOnly      bool
-	RequirePrivacySet     bool
+	AllowMessagesDispatch       bool
+	DefaultMappedModel          string
+	RequireOAuthOnly            bool
+	RequirePrivacySet           bool
+	MessagesDispatchModelConfig OpenAIMessagesDispatchModelConfig
 	// 从指定分组复制账号（创建分组后在同一事务内绑定）
 	CopyAccountsFromGroupIDs []int64
 }
@@ -180,19 +173,11 @@ type UpdateGroupInput struct {
 	WeeklyLimitUSD   *float64 // 周限额 (USD)
 	MonthlyLimitUSD  *float64 // 月限额 (USD)
 	// 图片生成计费配置（仅 antigravity 平台使用）
-	ImagePrice1K                   *float64
-	ImagePrice2K                   *float64
-	ImagePrice4K                   *float64
-	GrokInputPricePerMTok          *float64
-	GrokOutputPricePerMTok         *float64
-	GrokImagePrice1K               *float64
-	GrokImagePrice2K               *float64
-	GrokVideoPrice5S               *float64
-	GrokVideoPrice10S              *float64
-	GrokVideoPrice15S              *float64
-	GrokVideoHighQualityMultiplier *float64
-	ClaudeCodeOnly                 *bool  // 仅允许 Claude Code 客户端
-	FallbackGroupID                *int64 // 降级分组 ID
+	ImagePrice1K    *float64
+	ImagePrice2K    *float64
+	ImagePrice4K    *float64
+	ClaudeCodeOnly  *bool  // 仅允许 Claude Code 客户端
+	FallbackGroupID *int64 // 降级分组 ID
 	// 无效请求兜底分组 ID（仅 anthropic 平台使用）
 	FallbackGroupIDOnInvalidRequest *int64
 	// 模型路由配置（仅 anthropic 平台使用）
@@ -202,10 +187,11 @@ type UpdateGroupInput struct {
 	// 支持的模型系列（仅 antigravity 平台使用）
 	SupportedModelScopes *[]string
 	// OpenAI Messages 调度配置（仅 openai 平台使用）
-	AllowMessagesDispatch *bool
-	DefaultMappedModel    *string
-	RequireOAuthOnly      *bool
-	RequirePrivacySet     *bool
+	AllowMessagesDispatch       *bool
+	DefaultMappedModel          *string
+	RequireOAuthOnly            *bool
+	RequirePrivacySet           *bool
+	MessagesDispatchModelConfig *OpenAIMessagesDispatchModelConfig
 	// 从指定分组复制账号（同步操作：先清空当前分组的账号绑定，再绑定源分组的账号）
 	CopyAccountsFromGroupIDs []int64
 }
@@ -499,8 +485,8 @@ func NewAdminService(
 }
 
 // User management implementations
-func (s *adminServiceImpl) ListUsers(ctx context.Context, page, pageSize int, filters UserListFilters) ([]User, int64, error) {
-	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+func (s *adminServiceImpl) ListUsers(ctx context.Context, page, pageSize int, filters UserListFilters, sortBy, sortOrder string) ([]User, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	users, result, err := s.userRepo.ListWithFilters(ctx, params, filters)
 	if err != nil {
 		return nil, 0, err
@@ -767,8 +753,8 @@ func (s *adminServiceImpl) UpdateUserBalance(ctx context.Context, userID int64, 
 	return user, nil
 }
 
-func (s *adminServiceImpl) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int) ([]APIKey, int64, error) {
-	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+func (s *adminServiceImpl) GetUserAPIKeys(ctx context.Context, userID int64, page, pageSize int, sortBy, sortOrder string) ([]APIKey, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	keys, result, err := s.apiKeyRepo.ListByUserID(ctx, userID, params, APIKeyListFilters{})
 	if err != nil {
 		return nil, 0, err
@@ -803,8 +789,8 @@ func (s *adminServiceImpl) GetUserBalanceHistory(ctx context.Context, userID int
 }
 
 // Group management implementations
-func (s *adminServiceImpl) ListGroups(ctx context.Context, page, pageSize int, platform, status, search string, isExclusive *bool) ([]Group, int64, error) {
-	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+func (s *adminServiceImpl) ListGroups(ctx context.Context, page, pageSize int, platform, status, search string, isExclusive *bool, sortBy, sortOrder string) ([]Group, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	groups, result, err := s.groupRepo.ListWithFilters(ctx, params, platform, status, search, isExclusive)
 	if err != nil {
 		return nil, 0, err
@@ -844,14 +830,6 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 	imagePrice1K := normalizePrice(input.ImagePrice1K)
 	imagePrice2K := normalizePrice(input.ImagePrice2K)
 	imagePrice4K := normalizePrice(input.ImagePrice4K)
-	grokInputPricePerMTok := normalizePrice(input.GrokInputPricePerMTok)
-	grokOutputPricePerMTok := normalizePrice(input.GrokOutputPricePerMTok)
-	grokImagePrice1K := normalizePrice(input.GrokImagePrice1K)
-	grokImagePrice2K := normalizePrice(input.GrokImagePrice2K)
-	grokVideoPrice5S := normalizePrice(input.GrokVideoPrice5S)
-	grokVideoPrice10S := normalizePrice(input.GrokVideoPrice10S)
-	grokVideoPrice15S := normalizePrice(input.GrokVideoPrice15S)
-	grokVideoHighQualityMultiplier := normalizePrice(input.GrokVideoHighQualityMultiplier)
 
 	// 校验降级分组
 	if input.FallbackGroupID != nil {
@@ -922,14 +900,6 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		ImagePrice1K:                    imagePrice1K,
 		ImagePrice2K:                    imagePrice2K,
 		ImagePrice4K:                    imagePrice4K,
-		GrokInputPricePerMTok:           grokInputPricePerMTok,
-		GrokOutputPricePerMTok:          grokOutputPricePerMTok,
-		GrokImagePrice1K:                grokImagePrice1K,
-		GrokImagePrice2K:                grokImagePrice2K,
-		GrokVideoPrice5S:                grokVideoPrice5S,
-		GrokVideoPrice10S:               grokVideoPrice10S,
-		GrokVideoPrice15S:               grokVideoPrice15S,
-		GrokVideoHighQualityMultiplier:  grokVideoHighQualityMultiplier,
 		ClaudeCodeOnly:                  input.ClaudeCodeOnly,
 		FallbackGroupID:                 input.FallbackGroupID,
 		FallbackGroupIDOnInvalidRequest: fallbackOnInvalidRequest,
@@ -940,7 +910,9 @@ func (s *adminServiceImpl) CreateGroup(ctx context.Context, input *CreateGroupIn
 		RequireOAuthOnly:                input.RequireOAuthOnly,
 		RequirePrivacySet:               input.RequirePrivacySet,
 		DefaultMappedModel:              input.DefaultMappedModel,
+		MessagesDispatchModelConfig:     normalizeOpenAIMessagesDispatchModelConfig(input.MessagesDispatchModelConfig),
 	}
+	sanitizeGroupMessagesDispatchFields(group)
 	if err := s.groupRepo.Create(ctx, group); err != nil {
 		return nil, err
 	}
@@ -1106,30 +1078,6 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if input.ImagePrice4K != nil {
 		group.ImagePrice4K = normalizePrice(input.ImagePrice4K)
 	}
-	if input.GrokInputPricePerMTok != nil {
-		group.GrokInputPricePerMTok = normalizePrice(input.GrokInputPricePerMTok)
-	}
-	if input.GrokOutputPricePerMTok != nil {
-		group.GrokOutputPricePerMTok = normalizePrice(input.GrokOutputPricePerMTok)
-	}
-	if input.GrokImagePrice1K != nil {
-		group.GrokImagePrice1K = normalizePrice(input.GrokImagePrice1K)
-	}
-	if input.GrokImagePrice2K != nil {
-		group.GrokImagePrice2K = normalizePrice(input.GrokImagePrice2K)
-	}
-	if input.GrokVideoPrice5S != nil {
-		group.GrokVideoPrice5S = normalizePrice(input.GrokVideoPrice5S)
-	}
-	if input.GrokVideoPrice10S != nil {
-		group.GrokVideoPrice10S = normalizePrice(input.GrokVideoPrice10S)
-	}
-	if input.GrokVideoPrice15S != nil {
-		group.GrokVideoPrice15S = normalizePrice(input.GrokVideoPrice15S)
-	}
-	if input.GrokVideoHighQualityMultiplier != nil {
-		group.GrokVideoHighQualityMultiplier = normalizePrice(input.GrokVideoHighQualityMultiplier)
-	}
 
 	// Claude Code 客户端限制
 	if input.ClaudeCodeOnly != nil {
@@ -1191,6 +1139,10 @@ func (s *adminServiceImpl) UpdateGroup(ctx context.Context, id int64, input *Upd
 	if input.DefaultMappedModel != nil {
 		group.DefaultMappedModel = *input.DefaultMappedModel
 	}
+	if input.MessagesDispatchModelConfig != nil {
+		group.MessagesDispatchModelConfig = normalizeOpenAIMessagesDispatchModelConfig(*input.MessagesDispatchModelConfig)
+	}
+	sanitizeGroupMessagesDispatchFields(group)
 
 	if err := s.groupRepo.Update(ctx, group); err != nil {
 		return nil, err
@@ -1512,15 +1464,11 @@ func (s *adminServiceImpl) ReplaceUserGroup(ctx context.Context, userID, oldGrou
 }
 
 // Account management implementations
-func (s *adminServiceImpl) ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string) ([]Account, int64, error) {
-	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+func (s *adminServiceImpl) ListAccounts(ctx context.Context, page, pageSize int, platform, accountType, status, search string, groupID int64, privacyMode string, sortBy, sortOrder string) ([]Account, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	accounts, result, err := s.accountRepo.ListWithFilters(ctx, params, platform, accountType, status, search, groupID, privacyMode)
 	if err != nil {
 		return nil, 0, err
-	}
-	now := time.Now()
-	for i := range accounts {
-		syncOpenAICodexRateLimitFromExtra(ctx, s.accountRepo, &accounts[i], now)
 	}
 	return accounts, result.Total, nil
 }
@@ -1941,8 +1889,8 @@ func (s *adminServiceImpl) SetAccountSchedulable(ctx context.Context, id int64, 
 }
 
 // Proxy management implementations
-func (s *adminServiceImpl) ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string) ([]Proxy, int64, error) {
-	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+func (s *adminServiceImpl) ListProxies(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]Proxy, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	proxies, result, err := s.proxyRepo.ListWithFilters(ctx, params, protocol, status, search)
 	if err != nil {
 		return nil, 0, err
@@ -1950,8 +1898,8 @@ func (s *adminServiceImpl) ListProxies(ctx context.Context, page, pageSize int, 
 	return proxies, result.Total, nil
 }
 
-func (s *adminServiceImpl) ListProxiesWithAccountCount(ctx context.Context, page, pageSize int, protocol, status, search string) ([]ProxyWithAccountCount, int64, error) {
-	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+func (s *adminServiceImpl) ListProxiesWithAccountCount(ctx context.Context, page, pageSize int, protocol, status, search string, sortBy, sortOrder string) ([]ProxyWithAccountCount, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	proxies, result, err := s.proxyRepo.ListWithFiltersAndAccountCount(ctx, params, protocol, status, search)
 	if err != nil {
 		return nil, 0, err
@@ -2088,8 +2036,8 @@ func (s *adminServiceImpl) CheckProxyExists(ctx context.Context, host string, po
 }
 
 // Redeem code management implementations
-func (s *adminServiceImpl) ListRedeemCodes(ctx context.Context, page, pageSize int, codeType, status, search string) ([]RedeemCode, int64, error) {
-	params := pagination.PaginationParams{Page: page, PageSize: pageSize}
+func (s *adminServiceImpl) ListRedeemCodes(ctx context.Context, page, pageSize int, codeType, status, search string, sortBy, sortOrder string) ([]RedeemCode, int64, error) {
+	params := pagination.PaginationParams{Page: page, PageSize: pageSize, SortBy: sortBy, SortOrder: sortOrder}
 	codes, result, err := s.redeemCodeRepo.ListWithFilters(ctx, params, codeType, status, search)
 	if err != nil {
 		return nil, 0, err

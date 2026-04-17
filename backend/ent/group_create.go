@@ -18,6 +18,7 @@ import (
 	"github.com/Wei-Shaw/sub2api/ent/usagelog"
 	"github.com/Wei-Shaw/sub2api/ent/user"
 	"github.com/Wei-Shaw/sub2api/ent/usersubscription"
+	"github.com/Wei-Shaw/sub2api/internal/domain"
 )
 
 // GroupCreate is the builder for creating a Group entity.
@@ -258,118 +259,6 @@ func (_c *GroupCreate) SetNillableImagePrice4k(v *float64) *GroupCreate {
 	return _c
 }
 
-// SetGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field.
-func (_c *GroupCreate) SetGrokInputPricePerMtok(v float64) *GroupCreate {
-	_c.mutation.SetGrokInputPricePerMtok(v)
-	return _c
-}
-
-// SetNillableGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokInputPricePerMtok(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokInputPricePerMtok(*v)
-	}
-	return _c
-}
-
-// SetGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field.
-func (_c *GroupCreate) SetGrokOutputPricePerMtok(v float64) *GroupCreate {
-	_c.mutation.SetGrokOutputPricePerMtok(v)
-	return _c
-}
-
-// SetNillableGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokOutputPricePerMtok(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokOutputPricePerMtok(*v)
-	}
-	return _c
-}
-
-// SetGrokImagePrice1k sets the "grok_image_price_1k" field.
-func (_c *GroupCreate) SetGrokImagePrice1k(v float64) *GroupCreate {
-	_c.mutation.SetGrokImagePrice1k(v)
-	return _c
-}
-
-// SetNillableGrokImagePrice1k sets the "grok_image_price_1k" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokImagePrice1k(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokImagePrice1k(*v)
-	}
-	return _c
-}
-
-// SetGrokImagePrice2k sets the "grok_image_price_2k" field.
-func (_c *GroupCreate) SetGrokImagePrice2k(v float64) *GroupCreate {
-	_c.mutation.SetGrokImagePrice2k(v)
-	return _c
-}
-
-// SetNillableGrokImagePrice2k sets the "grok_image_price_2k" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokImagePrice2k(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokImagePrice2k(*v)
-	}
-	return _c
-}
-
-// SetGrokVideoPrice5s sets the "grok_video_price_5s" field.
-func (_c *GroupCreate) SetGrokVideoPrice5s(v float64) *GroupCreate {
-	_c.mutation.SetGrokVideoPrice5s(v)
-	return _c
-}
-
-// SetNillableGrokVideoPrice5s sets the "grok_video_price_5s" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokVideoPrice5s(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokVideoPrice5s(*v)
-	}
-	return _c
-}
-
-// SetGrokVideoPrice10s sets the "grok_video_price_10s" field.
-func (_c *GroupCreate) SetGrokVideoPrice10s(v float64) *GroupCreate {
-	_c.mutation.SetGrokVideoPrice10s(v)
-	return _c
-}
-
-// SetNillableGrokVideoPrice10s sets the "grok_video_price_10s" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokVideoPrice10s(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokVideoPrice10s(*v)
-	}
-	return _c
-}
-
-// SetGrokVideoPrice15s sets the "grok_video_price_15s" field.
-func (_c *GroupCreate) SetGrokVideoPrice15s(v float64) *GroupCreate {
-	_c.mutation.SetGrokVideoPrice15s(v)
-	return _c
-}
-
-// SetNillableGrokVideoPrice15s sets the "grok_video_price_15s" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokVideoPrice15s(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokVideoPrice15s(*v)
-	}
-	return _c
-}
-
-// SetGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field.
-func (_c *GroupCreate) SetGrokVideoHighQualityMultiplier(v float64) *GroupCreate {
-	_c.mutation.SetGrokVideoHighQualityMultiplier(v)
-	return _c
-}
-
-// SetNillableGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field if the given value is not nil.
-func (_c *GroupCreate) SetNillableGrokVideoHighQualityMultiplier(v *float64) *GroupCreate {
-	if v != nil {
-		_c.SetGrokVideoHighQualityMultiplier(*v)
-	}
-	return _c
-}
-
 // SetClaudeCodeOnly sets the "claude_code_only" field.
 func (_c *GroupCreate) SetClaudeCodeOnly(v bool) *GroupCreate {
 	_c.mutation.SetClaudeCodeOnly(v)
@@ -518,6 +407,20 @@ func (_c *GroupCreate) SetDefaultMappedModel(v string) *GroupCreate {
 func (_c *GroupCreate) SetNillableDefaultMappedModel(v *string) *GroupCreate {
 	if v != nil {
 		_c.SetDefaultMappedModel(*v)
+	}
+	return _c
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (_c *GroupCreate) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupCreate {
+	_c.mutation.SetMessagesDispatchModelConfig(v)
+	return _c
+}
+
+// SetNillableMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field if the given value is not nil.
+func (_c *GroupCreate) SetNillableMessagesDispatchModelConfig(v *domain.OpenAIMessagesDispatchModelConfig) *GroupCreate {
+	if v != nil {
+		_c.SetMessagesDispatchModelConfig(*v)
 	}
 	return _c
 }
@@ -723,6 +626,10 @@ func (_c *GroupCreate) defaults() error {
 		v := group.DefaultDefaultMappedModel
 		_c.mutation.SetDefaultMappedModel(v)
 	}
+	if _, ok := _c.mutation.MessagesDispatchModelConfig(); !ok {
+		v := group.DefaultMessagesDispatchModelConfig
+		_c.mutation.SetMessagesDispatchModelConfig(v)
+	}
 	return nil
 }
 
@@ -806,6 +713,9 @@ func (_c *GroupCreate) check() error {
 		if err := group.DefaultMappedModelValidator(v); err != nil {
 			return &ValidationError{Name: "default_mapped_model", err: fmt.Errorf(`ent: validator failed for field "Group.default_mapped_model": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.MessagesDispatchModelConfig(); !ok {
+		return &ValidationError{Name: "messages_dispatch_model_config", err: errors.New(`ent: missing required field "Group.messages_dispatch_model_config"`)}
 	}
 	return nil
 }
@@ -902,38 +812,6 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 		_spec.SetField(group.FieldImagePrice4k, field.TypeFloat64, value)
 		_node.ImagePrice4k = &value
 	}
-	if value, ok := _c.mutation.GrokInputPricePerMtok(); ok {
-		_spec.SetField(group.FieldGrokInputPricePerMtok, field.TypeFloat64, value)
-		_node.GrokInputPricePerMtok = &value
-	}
-	if value, ok := _c.mutation.GrokOutputPricePerMtok(); ok {
-		_spec.SetField(group.FieldGrokOutputPricePerMtok, field.TypeFloat64, value)
-		_node.GrokOutputPricePerMtok = &value
-	}
-	if value, ok := _c.mutation.GrokImagePrice1k(); ok {
-		_spec.SetField(group.FieldGrokImagePrice1k, field.TypeFloat64, value)
-		_node.GrokImagePrice1k = &value
-	}
-	if value, ok := _c.mutation.GrokImagePrice2k(); ok {
-		_spec.SetField(group.FieldGrokImagePrice2k, field.TypeFloat64, value)
-		_node.GrokImagePrice2k = &value
-	}
-	if value, ok := _c.mutation.GrokVideoPrice5s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice5s, field.TypeFloat64, value)
-		_node.GrokVideoPrice5s = &value
-	}
-	if value, ok := _c.mutation.GrokVideoPrice10s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice10s, field.TypeFloat64, value)
-		_node.GrokVideoPrice10s = &value
-	}
-	if value, ok := _c.mutation.GrokVideoPrice15s(); ok {
-		_spec.SetField(group.FieldGrokVideoPrice15s, field.TypeFloat64, value)
-		_node.GrokVideoPrice15s = &value
-	}
-	if value, ok := _c.mutation.GrokVideoHighQualityMultiplier(); ok {
-		_spec.SetField(group.FieldGrokVideoHighQualityMultiplier, field.TypeFloat64, value)
-		_node.GrokVideoHighQualityMultiplier = &value
-	}
 	if value, ok := _c.mutation.ClaudeCodeOnly(); ok {
 		_spec.SetField(group.FieldClaudeCodeOnly, field.TypeBool, value)
 		_node.ClaudeCodeOnly = value
@@ -981,6 +859,10 @@ func (_c *GroupCreate) createSpec() (*Group, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DefaultMappedModel(); ok {
 		_spec.SetField(group.FieldDefaultMappedModel, field.TypeString, value)
 		_node.DefaultMappedModel = value
+	}
+	if value, ok := _c.mutation.MessagesDispatchModelConfig(); ok {
+		_spec.SetField(group.FieldMessagesDispatchModelConfig, field.TypeJSON, value)
+		_node.MessagesDispatchModelConfig = value
 	}
 	if nodes := _c.mutation.APIKeysIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -1426,198 +1308,6 @@ func (u *GroupUpsert) ClearImagePrice4k() *GroupUpsert {
 	return u
 }
 
-// SetGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field.
-func (u *GroupUpsert) SetGrokInputPricePerMtok(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokInputPricePerMtok, v)
-	return u
-}
-
-// UpdateGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokInputPricePerMtok() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokInputPricePerMtok)
-	return u
-}
-
-// AddGrokInputPricePerMtok adds v to the "grok_input_price_per_mtok" field.
-func (u *GroupUpsert) AddGrokInputPricePerMtok(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokInputPricePerMtok, v)
-	return u
-}
-
-// ClearGrokInputPricePerMtok clears the value of the "grok_input_price_per_mtok" field.
-func (u *GroupUpsert) ClearGrokInputPricePerMtok() *GroupUpsert {
-	u.SetNull(group.FieldGrokInputPricePerMtok)
-	return u
-}
-
-// SetGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field.
-func (u *GroupUpsert) SetGrokOutputPricePerMtok(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokOutputPricePerMtok, v)
-	return u
-}
-
-// UpdateGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokOutputPricePerMtok() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokOutputPricePerMtok)
-	return u
-}
-
-// AddGrokOutputPricePerMtok adds v to the "grok_output_price_per_mtok" field.
-func (u *GroupUpsert) AddGrokOutputPricePerMtok(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokOutputPricePerMtok, v)
-	return u
-}
-
-// ClearGrokOutputPricePerMtok clears the value of the "grok_output_price_per_mtok" field.
-func (u *GroupUpsert) ClearGrokOutputPricePerMtok() *GroupUpsert {
-	u.SetNull(group.FieldGrokOutputPricePerMtok)
-	return u
-}
-
-// SetGrokImagePrice1k sets the "grok_image_price_1k" field.
-func (u *GroupUpsert) SetGrokImagePrice1k(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokImagePrice1k, v)
-	return u
-}
-
-// UpdateGrokImagePrice1k sets the "grok_image_price_1k" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokImagePrice1k() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokImagePrice1k)
-	return u
-}
-
-// AddGrokImagePrice1k adds v to the "grok_image_price_1k" field.
-func (u *GroupUpsert) AddGrokImagePrice1k(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokImagePrice1k, v)
-	return u
-}
-
-// ClearGrokImagePrice1k clears the value of the "grok_image_price_1k" field.
-func (u *GroupUpsert) ClearGrokImagePrice1k() *GroupUpsert {
-	u.SetNull(group.FieldGrokImagePrice1k)
-	return u
-}
-
-// SetGrokImagePrice2k sets the "grok_image_price_2k" field.
-func (u *GroupUpsert) SetGrokImagePrice2k(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokImagePrice2k, v)
-	return u
-}
-
-// UpdateGrokImagePrice2k sets the "grok_image_price_2k" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokImagePrice2k() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokImagePrice2k)
-	return u
-}
-
-// AddGrokImagePrice2k adds v to the "grok_image_price_2k" field.
-func (u *GroupUpsert) AddGrokImagePrice2k(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokImagePrice2k, v)
-	return u
-}
-
-// ClearGrokImagePrice2k clears the value of the "grok_image_price_2k" field.
-func (u *GroupUpsert) ClearGrokImagePrice2k() *GroupUpsert {
-	u.SetNull(group.FieldGrokImagePrice2k)
-	return u
-}
-
-// SetGrokVideoPrice5s sets the "grok_video_price_5s" field.
-func (u *GroupUpsert) SetGrokVideoPrice5s(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokVideoPrice5s, v)
-	return u
-}
-
-// UpdateGrokVideoPrice5s sets the "grok_video_price_5s" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokVideoPrice5s() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokVideoPrice5s)
-	return u
-}
-
-// AddGrokVideoPrice5s adds v to the "grok_video_price_5s" field.
-func (u *GroupUpsert) AddGrokVideoPrice5s(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokVideoPrice5s, v)
-	return u
-}
-
-// ClearGrokVideoPrice5s clears the value of the "grok_video_price_5s" field.
-func (u *GroupUpsert) ClearGrokVideoPrice5s() *GroupUpsert {
-	u.SetNull(group.FieldGrokVideoPrice5s)
-	return u
-}
-
-// SetGrokVideoPrice10s sets the "grok_video_price_10s" field.
-func (u *GroupUpsert) SetGrokVideoPrice10s(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokVideoPrice10s, v)
-	return u
-}
-
-// UpdateGrokVideoPrice10s sets the "grok_video_price_10s" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokVideoPrice10s() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokVideoPrice10s)
-	return u
-}
-
-// AddGrokVideoPrice10s adds v to the "grok_video_price_10s" field.
-func (u *GroupUpsert) AddGrokVideoPrice10s(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokVideoPrice10s, v)
-	return u
-}
-
-// ClearGrokVideoPrice10s clears the value of the "grok_video_price_10s" field.
-func (u *GroupUpsert) ClearGrokVideoPrice10s() *GroupUpsert {
-	u.SetNull(group.FieldGrokVideoPrice10s)
-	return u
-}
-
-// SetGrokVideoPrice15s sets the "grok_video_price_15s" field.
-func (u *GroupUpsert) SetGrokVideoPrice15s(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokVideoPrice15s, v)
-	return u
-}
-
-// UpdateGrokVideoPrice15s sets the "grok_video_price_15s" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokVideoPrice15s() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokVideoPrice15s)
-	return u
-}
-
-// AddGrokVideoPrice15s adds v to the "grok_video_price_15s" field.
-func (u *GroupUpsert) AddGrokVideoPrice15s(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokVideoPrice15s, v)
-	return u
-}
-
-// ClearGrokVideoPrice15s clears the value of the "grok_video_price_15s" field.
-func (u *GroupUpsert) ClearGrokVideoPrice15s() *GroupUpsert {
-	u.SetNull(group.FieldGrokVideoPrice15s)
-	return u
-}
-
-// SetGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsert) SetGrokVideoHighQualityMultiplier(v float64) *GroupUpsert {
-	u.Set(group.FieldGrokVideoHighQualityMultiplier, v)
-	return u
-}
-
-// UpdateGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field to the value that was provided on create.
-func (u *GroupUpsert) UpdateGrokVideoHighQualityMultiplier() *GroupUpsert {
-	u.SetExcluded(group.FieldGrokVideoHighQualityMultiplier)
-	return u
-}
-
-// AddGrokVideoHighQualityMultiplier adds v to the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsert) AddGrokVideoHighQualityMultiplier(v float64) *GroupUpsert {
-	u.Add(group.FieldGrokVideoHighQualityMultiplier, v)
-	return u
-}
-
-// ClearGrokVideoHighQualityMultiplier clears the value of the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsert) ClearGrokVideoHighQualityMultiplier() *GroupUpsert {
-	u.SetNull(group.FieldGrokVideoHighQualityMultiplier)
-	return u
-}
-
 // SetClaudeCodeOnly sets the "claude_code_only" field.
 func (u *GroupUpsert) SetClaudeCodeOnly(v bool) *GroupUpsert {
 	u.Set(group.FieldClaudeCodeOnly, v)
@@ -1795,6 +1485,18 @@ func (u *GroupUpsert) SetDefaultMappedModel(v string) *GroupUpsert {
 // UpdateDefaultMappedModel sets the "default_mapped_model" field to the value that was provided on create.
 func (u *GroupUpsert) UpdateDefaultMappedModel() *GroupUpsert {
 	u.SetExcluded(group.FieldDefaultMappedModel)
+	return u
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (u *GroupUpsert) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpsert {
+	u.Set(group.FieldMessagesDispatchModelConfig, v)
+	return u
+}
+
+// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
+func (u *GroupUpsert) UpdateMessagesDispatchModelConfig() *GroupUpsert {
+	u.SetExcluded(group.FieldMessagesDispatchModelConfig)
 	return u
 }
 
@@ -2179,230 +1881,6 @@ func (u *GroupUpsertOne) ClearImagePrice4k() *GroupUpsertOne {
 	})
 }
 
-// SetGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field.
-func (u *GroupUpsertOne) SetGrokInputPricePerMtok(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokInputPricePerMtok(v)
-	})
-}
-
-// AddGrokInputPricePerMtok adds v to the "grok_input_price_per_mtok" field.
-func (u *GroupUpsertOne) AddGrokInputPricePerMtok(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokInputPricePerMtok(v)
-	})
-}
-
-// UpdateGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokInputPricePerMtok() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokInputPricePerMtok()
-	})
-}
-
-// ClearGrokInputPricePerMtok clears the value of the "grok_input_price_per_mtok" field.
-func (u *GroupUpsertOne) ClearGrokInputPricePerMtok() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokInputPricePerMtok()
-	})
-}
-
-// SetGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field.
-func (u *GroupUpsertOne) SetGrokOutputPricePerMtok(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokOutputPricePerMtok(v)
-	})
-}
-
-// AddGrokOutputPricePerMtok adds v to the "grok_output_price_per_mtok" field.
-func (u *GroupUpsertOne) AddGrokOutputPricePerMtok(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokOutputPricePerMtok(v)
-	})
-}
-
-// UpdateGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokOutputPricePerMtok() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokOutputPricePerMtok()
-	})
-}
-
-// ClearGrokOutputPricePerMtok clears the value of the "grok_output_price_per_mtok" field.
-func (u *GroupUpsertOne) ClearGrokOutputPricePerMtok() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokOutputPricePerMtok()
-	})
-}
-
-// SetGrokImagePrice1k sets the "grok_image_price_1k" field.
-func (u *GroupUpsertOne) SetGrokImagePrice1k(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokImagePrice1k(v)
-	})
-}
-
-// AddGrokImagePrice1k adds v to the "grok_image_price_1k" field.
-func (u *GroupUpsertOne) AddGrokImagePrice1k(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokImagePrice1k(v)
-	})
-}
-
-// UpdateGrokImagePrice1k sets the "grok_image_price_1k" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokImagePrice1k() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokImagePrice1k()
-	})
-}
-
-// ClearGrokImagePrice1k clears the value of the "grok_image_price_1k" field.
-func (u *GroupUpsertOne) ClearGrokImagePrice1k() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokImagePrice1k()
-	})
-}
-
-// SetGrokImagePrice2k sets the "grok_image_price_2k" field.
-func (u *GroupUpsertOne) SetGrokImagePrice2k(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokImagePrice2k(v)
-	})
-}
-
-// AddGrokImagePrice2k adds v to the "grok_image_price_2k" field.
-func (u *GroupUpsertOne) AddGrokImagePrice2k(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokImagePrice2k(v)
-	})
-}
-
-// UpdateGrokImagePrice2k sets the "grok_image_price_2k" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokImagePrice2k() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokImagePrice2k()
-	})
-}
-
-// ClearGrokImagePrice2k clears the value of the "grok_image_price_2k" field.
-func (u *GroupUpsertOne) ClearGrokImagePrice2k() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokImagePrice2k()
-	})
-}
-
-// SetGrokVideoPrice5s sets the "grok_video_price_5s" field.
-func (u *GroupUpsertOne) SetGrokVideoPrice5s(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoPrice5s(v)
-	})
-}
-
-// AddGrokVideoPrice5s adds v to the "grok_video_price_5s" field.
-func (u *GroupUpsertOne) AddGrokVideoPrice5s(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoPrice5s(v)
-	})
-}
-
-// UpdateGrokVideoPrice5s sets the "grok_video_price_5s" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokVideoPrice5s() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoPrice5s()
-	})
-}
-
-// ClearGrokVideoPrice5s clears the value of the "grok_video_price_5s" field.
-func (u *GroupUpsertOne) ClearGrokVideoPrice5s() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoPrice5s()
-	})
-}
-
-// SetGrokVideoPrice10s sets the "grok_video_price_10s" field.
-func (u *GroupUpsertOne) SetGrokVideoPrice10s(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoPrice10s(v)
-	})
-}
-
-// AddGrokVideoPrice10s adds v to the "grok_video_price_10s" field.
-func (u *GroupUpsertOne) AddGrokVideoPrice10s(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoPrice10s(v)
-	})
-}
-
-// UpdateGrokVideoPrice10s sets the "grok_video_price_10s" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokVideoPrice10s() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoPrice10s()
-	})
-}
-
-// ClearGrokVideoPrice10s clears the value of the "grok_video_price_10s" field.
-func (u *GroupUpsertOne) ClearGrokVideoPrice10s() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoPrice10s()
-	})
-}
-
-// SetGrokVideoPrice15s sets the "grok_video_price_15s" field.
-func (u *GroupUpsertOne) SetGrokVideoPrice15s(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoPrice15s(v)
-	})
-}
-
-// AddGrokVideoPrice15s adds v to the "grok_video_price_15s" field.
-func (u *GroupUpsertOne) AddGrokVideoPrice15s(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoPrice15s(v)
-	})
-}
-
-// UpdateGrokVideoPrice15s sets the "grok_video_price_15s" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokVideoPrice15s() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoPrice15s()
-	})
-}
-
-// ClearGrokVideoPrice15s clears the value of the "grok_video_price_15s" field.
-func (u *GroupUpsertOne) ClearGrokVideoPrice15s() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoPrice15s()
-	})
-}
-
-// SetGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsertOne) SetGrokVideoHighQualityMultiplier(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoHighQualityMultiplier(v)
-	})
-}
-
-// AddGrokVideoHighQualityMultiplier adds v to the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsertOne) AddGrokVideoHighQualityMultiplier(v float64) *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoHighQualityMultiplier(v)
-	})
-}
-
-// UpdateGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field to the value that was provided on create.
-func (u *GroupUpsertOne) UpdateGrokVideoHighQualityMultiplier() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoHighQualityMultiplier()
-	})
-}
-
-// ClearGrokVideoHighQualityMultiplier clears the value of the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsertOne) ClearGrokVideoHighQualityMultiplier() *GroupUpsertOne {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoHighQualityMultiplier()
-	})
-}
-
 // SetClaudeCodeOnly sets the "claude_code_only" field.
 func (u *GroupUpsertOne) SetClaudeCodeOnly(v bool) *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
@@ -2610,6 +2088,20 @@ func (u *GroupUpsertOne) SetDefaultMappedModel(v string) *GroupUpsertOne {
 func (u *GroupUpsertOne) UpdateDefaultMappedModel() *GroupUpsertOne {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDefaultMappedModel()
+	})
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (u *GroupUpsertOne) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetMessagesDispatchModelConfig(v)
+	})
+}
+
+// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
+func (u *GroupUpsertOne) UpdateMessagesDispatchModelConfig() *GroupUpsertOne {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateMessagesDispatchModelConfig()
 	})
 }
 
@@ -3160,230 +2652,6 @@ func (u *GroupUpsertBulk) ClearImagePrice4k() *GroupUpsertBulk {
 	})
 }
 
-// SetGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field.
-func (u *GroupUpsertBulk) SetGrokInputPricePerMtok(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokInputPricePerMtok(v)
-	})
-}
-
-// AddGrokInputPricePerMtok adds v to the "grok_input_price_per_mtok" field.
-func (u *GroupUpsertBulk) AddGrokInputPricePerMtok(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokInputPricePerMtok(v)
-	})
-}
-
-// UpdateGrokInputPricePerMtok sets the "grok_input_price_per_mtok" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokInputPricePerMtok() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokInputPricePerMtok()
-	})
-}
-
-// ClearGrokInputPricePerMtok clears the value of the "grok_input_price_per_mtok" field.
-func (u *GroupUpsertBulk) ClearGrokInputPricePerMtok() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokInputPricePerMtok()
-	})
-}
-
-// SetGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field.
-func (u *GroupUpsertBulk) SetGrokOutputPricePerMtok(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokOutputPricePerMtok(v)
-	})
-}
-
-// AddGrokOutputPricePerMtok adds v to the "grok_output_price_per_mtok" field.
-func (u *GroupUpsertBulk) AddGrokOutputPricePerMtok(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokOutputPricePerMtok(v)
-	})
-}
-
-// UpdateGrokOutputPricePerMtok sets the "grok_output_price_per_mtok" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokOutputPricePerMtok() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokOutputPricePerMtok()
-	})
-}
-
-// ClearGrokOutputPricePerMtok clears the value of the "grok_output_price_per_mtok" field.
-func (u *GroupUpsertBulk) ClearGrokOutputPricePerMtok() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokOutputPricePerMtok()
-	})
-}
-
-// SetGrokImagePrice1k sets the "grok_image_price_1k" field.
-func (u *GroupUpsertBulk) SetGrokImagePrice1k(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokImagePrice1k(v)
-	})
-}
-
-// AddGrokImagePrice1k adds v to the "grok_image_price_1k" field.
-func (u *GroupUpsertBulk) AddGrokImagePrice1k(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokImagePrice1k(v)
-	})
-}
-
-// UpdateGrokImagePrice1k sets the "grok_image_price_1k" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokImagePrice1k() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokImagePrice1k()
-	})
-}
-
-// ClearGrokImagePrice1k clears the value of the "grok_image_price_1k" field.
-func (u *GroupUpsertBulk) ClearGrokImagePrice1k() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokImagePrice1k()
-	})
-}
-
-// SetGrokImagePrice2k sets the "grok_image_price_2k" field.
-func (u *GroupUpsertBulk) SetGrokImagePrice2k(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokImagePrice2k(v)
-	})
-}
-
-// AddGrokImagePrice2k adds v to the "grok_image_price_2k" field.
-func (u *GroupUpsertBulk) AddGrokImagePrice2k(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokImagePrice2k(v)
-	})
-}
-
-// UpdateGrokImagePrice2k sets the "grok_image_price_2k" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokImagePrice2k() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokImagePrice2k()
-	})
-}
-
-// ClearGrokImagePrice2k clears the value of the "grok_image_price_2k" field.
-func (u *GroupUpsertBulk) ClearGrokImagePrice2k() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokImagePrice2k()
-	})
-}
-
-// SetGrokVideoPrice5s sets the "grok_video_price_5s" field.
-func (u *GroupUpsertBulk) SetGrokVideoPrice5s(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoPrice5s(v)
-	})
-}
-
-// AddGrokVideoPrice5s adds v to the "grok_video_price_5s" field.
-func (u *GroupUpsertBulk) AddGrokVideoPrice5s(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoPrice5s(v)
-	})
-}
-
-// UpdateGrokVideoPrice5s sets the "grok_video_price_5s" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokVideoPrice5s() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoPrice5s()
-	})
-}
-
-// ClearGrokVideoPrice5s clears the value of the "grok_video_price_5s" field.
-func (u *GroupUpsertBulk) ClearGrokVideoPrice5s() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoPrice5s()
-	})
-}
-
-// SetGrokVideoPrice10s sets the "grok_video_price_10s" field.
-func (u *GroupUpsertBulk) SetGrokVideoPrice10s(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoPrice10s(v)
-	})
-}
-
-// AddGrokVideoPrice10s adds v to the "grok_video_price_10s" field.
-func (u *GroupUpsertBulk) AddGrokVideoPrice10s(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoPrice10s(v)
-	})
-}
-
-// UpdateGrokVideoPrice10s sets the "grok_video_price_10s" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokVideoPrice10s() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoPrice10s()
-	})
-}
-
-// ClearGrokVideoPrice10s clears the value of the "grok_video_price_10s" field.
-func (u *GroupUpsertBulk) ClearGrokVideoPrice10s() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoPrice10s()
-	})
-}
-
-// SetGrokVideoPrice15s sets the "grok_video_price_15s" field.
-func (u *GroupUpsertBulk) SetGrokVideoPrice15s(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoPrice15s(v)
-	})
-}
-
-// AddGrokVideoPrice15s adds v to the "grok_video_price_15s" field.
-func (u *GroupUpsertBulk) AddGrokVideoPrice15s(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoPrice15s(v)
-	})
-}
-
-// UpdateGrokVideoPrice15s sets the "grok_video_price_15s" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokVideoPrice15s() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoPrice15s()
-	})
-}
-
-// ClearGrokVideoPrice15s clears the value of the "grok_video_price_15s" field.
-func (u *GroupUpsertBulk) ClearGrokVideoPrice15s() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoPrice15s()
-	})
-}
-
-// SetGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsertBulk) SetGrokVideoHighQualityMultiplier(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.SetGrokVideoHighQualityMultiplier(v)
-	})
-}
-
-// AddGrokVideoHighQualityMultiplier adds v to the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsertBulk) AddGrokVideoHighQualityMultiplier(v float64) *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.AddGrokVideoHighQualityMultiplier(v)
-	})
-}
-
-// UpdateGrokVideoHighQualityMultiplier sets the "grok_video_high_quality_multiplier" field to the value that was provided on create.
-func (u *GroupUpsertBulk) UpdateGrokVideoHighQualityMultiplier() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.UpdateGrokVideoHighQualityMultiplier()
-	})
-}
-
-// ClearGrokVideoHighQualityMultiplier clears the value of the "grok_video_high_quality_multiplier" field.
-func (u *GroupUpsertBulk) ClearGrokVideoHighQualityMultiplier() *GroupUpsertBulk {
-	return u.Update(func(s *GroupUpsert) {
-		s.ClearGrokVideoHighQualityMultiplier()
-	})
-}
-
 // SetClaudeCodeOnly sets the "claude_code_only" field.
 func (u *GroupUpsertBulk) SetClaudeCodeOnly(v bool) *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
@@ -3591,6 +2859,20 @@ func (u *GroupUpsertBulk) SetDefaultMappedModel(v string) *GroupUpsertBulk {
 func (u *GroupUpsertBulk) UpdateDefaultMappedModel() *GroupUpsertBulk {
 	return u.Update(func(s *GroupUpsert) {
 		s.UpdateDefaultMappedModel()
+	})
+}
+
+// SetMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field.
+func (u *GroupUpsertBulk) SetMessagesDispatchModelConfig(v domain.OpenAIMessagesDispatchModelConfig) *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.SetMessagesDispatchModelConfig(v)
+	})
+}
+
+// UpdateMessagesDispatchModelConfig sets the "messages_dispatch_model_config" field to the value that was provided on create.
+func (u *GroupUpsertBulk) UpdateMessagesDispatchModelConfig() *GroupUpsertBulk {
+	return u.Update(func(s *GroupUpsert) {
+		s.UpdateMessagesDispatchModelConfig()
 	})
 }
 

@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
-	"strings"
 	"time"
 
 	dbent "github.com/Wei-Shaw/sub2api/ent"
@@ -17,30 +15,6 @@ import (
 var (
 	ErrUsageLogNotFound = infraerrors.NotFound("USAGE_LOG_NOT_FOUND", "usage log not found")
 )
-
-const (
-	lowBalanceEmailThreshold       = 5.0
-	defaultBalanceEmailSiteName    = "openaiapi"
-	defaultBalanceEmailFrontendURL = "https://openaiapi.icu"
-)
-
-type userBalanceTransitionReader interface {
-	UpdateBalanceAndGetTransition(ctx context.Context, id int64, amount float64) (*UserBalanceTransition, error)
-}
-
-type balanceEmailNotificationType string
-
-const (
-	balanceEmailNotificationNone      balanceEmailNotificationType = ""
-	balanceEmailNotificationLow       balanceEmailNotificationType = "low"
-	balanceEmailNotificationExhausted balanceEmailNotificationType = "exhausted"
-)
-
-type balanceEmailNotification struct {
-	Email          string
-	CurrentBalance float64
-	Type           balanceEmailNotificationType
-}
 
 // CreateUsageLogRequest 创建使用日志请求
 type CreateUsageLogRequest struct {
@@ -84,26 +58,15 @@ type UsageService struct {
 	userRepo             UserRepository
 	entClient            *dbent.Client
 	authCacheInvalidator APIKeyAuthCacheInvalidator
-	settingService       *SettingService
-	emailQueueService    *EmailQueueService
 }
 
 // NewUsageService 创建使用统计服务实例
-func NewUsageService(
-	usageRepo UsageLogRepository,
-	userRepo UserRepository,
-	entClient *dbent.Client,
-	authCacheInvalidator APIKeyAuthCacheInvalidator,
-	settingService *SettingService,
-	emailQueueService *EmailQueueService,
-) *UsageService {
+func NewUsageService(usageRepo UsageLogRepository, userRepo UserRepository, entClient *dbent.Client, authCacheInvalidator APIKeyAuthCacheInvalidator) *UsageService {
 	return &UsageService{
 		usageRepo:            usageRepo,
 		userRepo:             userRepo,
 		entClient:            entClient,
 		authCacheInvalidator: authCacheInvalidator,
-		settingService:       settingService,
-		emailQueueService:    emailQueueService,
 	}
 }
 
@@ -122,7 +85,7 @@ func (s *UsageService) Create(ctx context.Context, req CreateUsageLogRequest) (*
 	}
 
 	// 验证用户存在
-	userBefore, err := s.userRepo.GetByID(txCtx, req.UserID)
+	_, err = s.userRepo.GetByID(txCtx, req.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("get user: %w", err)
 	}
@@ -158,27 +121,9 @@ func (s *UsageService) Create(ctx context.Context, req CreateUsageLogRequest) (*
 
 	// 扣除用户余额
 	balanceUpdated := false
-	var balanceTransition *UserBalanceTransition
 	if inserted && req.ActualCost > 0 {
-		if repoWithTransition, ok := s.userRepo.(userBalanceTransitionReader); ok {
-			balanceTransition, err = repoWithTransition.UpdateBalanceAndGetTransition(txCtx, req.UserID, -req.ActualCost)
-			if err != nil {
-				return nil, fmt.Errorf("update user balance: %w", err)
-			}
-		} else {
-			if err := s.userRepo.UpdateBalance(txCtx, req.UserID, -req.ActualCost); err != nil {
-				return nil, fmt.Errorf("update user balance: %w", err)
-			}
-			userAfter, getErr := s.userRepo.GetByID(txCtx, req.UserID)
-			if getErr != nil {
-				return nil, fmt.Errorf("get user after balance update: %w", getErr)
-			}
-			balanceTransition = &UserBalanceTransition{
-				UserID:          req.UserID,
-				Email:           userBefore.Email,
-				PreviousBalance: userBefore.Balance,
-				CurrentBalance:  userAfter.Balance,
-			}
+		if err := s.userRepo.UpdateBalance(txCtx, req.UserID, -req.ActualCost); err != nil {
+			return nil, fmt.Errorf("update user balance: %w", err)
 		}
 		balanceUpdated = true
 	}
@@ -190,76 +135,8 @@ func (s *UsageService) Create(ctx context.Context, req CreateUsageLogRequest) (*
 	}
 
 	s.invalidateUsageCaches(ctx, req.UserID, balanceUpdated)
-	s.enqueueBalanceNotification(ctx, balanceTransition)
 
 	return usageLog, nil
-}
-
-func selectBalanceEmailNotification(previousBalance, currentBalance float64) balanceEmailNotificationType {
-	if previousBalance > 0 && currentBalance <= 0 {
-		return balanceEmailNotificationExhausted
-	}
-	if previousBalance >= lowBalanceEmailThreshold && currentBalance < lowBalanceEmailThreshold {
-		return balanceEmailNotificationLow
-	}
-	return balanceEmailNotificationNone
-}
-
-func normalizeBalanceEmailBranding(siteName, frontendURL string) (string, string) {
-	siteName = strings.TrimSpace(siteName)
-	frontendURL = strings.TrimSpace(frontendURL)
-	if siteName == "" || strings.EqualFold(siteName, "Sub2API") {
-		siteName = defaultBalanceEmailSiteName
-	}
-	if frontendURL == "" {
-		frontendURL = defaultBalanceEmailFrontendURL
-	}
-	return siteName, strings.TrimRight(frontendURL, "/")
-}
-
-func (s *UsageService) buildBalanceNotification(transition *UserBalanceTransition) *balanceEmailNotification {
-	if transition == nil || strings.TrimSpace(transition.Email) == "" {
-		return nil
-	}
-	notificationType := selectBalanceEmailNotification(transition.PreviousBalance, transition.CurrentBalance)
-	if notificationType == balanceEmailNotificationNone {
-		return nil
-	}
-	return &balanceEmailNotification{
-		Email:          strings.TrimSpace(transition.Email),
-		CurrentBalance: transition.CurrentBalance,
-		Type:           notificationType,
-	}
-}
-
-func (s *UsageService) resolveBalanceEmailBranding(ctx context.Context) (string, string) {
-	if s.settingService == nil {
-		return normalizeBalanceEmailBranding("", "")
-	}
-	return normalizeBalanceEmailBranding(
-		s.settingService.GetSiteName(ctx),
-		s.settingService.GetFrontendURL(ctx),
-	)
-}
-
-func (s *UsageService) enqueueBalanceNotification(ctx context.Context, transition *UserBalanceTransition) {
-	notification := s.buildBalanceNotification(transition)
-	if notification == nil || s.emailQueueService == nil {
-		return
-	}
-	siteName, frontendURL := s.resolveBalanceEmailBranding(ctx)
-	var err error
-	switch notification.Type {
-	case balanceEmailNotificationLow:
-		err = s.emailQueueService.EnqueueLowBalance(notification.Email, siteName, frontendURL, notification.CurrentBalance)
-	case balanceEmailNotificationExhausted:
-		err = s.emailQueueService.EnqueueBalanceDepleted(notification.Email, siteName, frontendURL, notification.CurrentBalance)
-	default:
-		return
-	}
-	if err != nil {
-		log.Printf("[UsageService] enqueue balance notification failed: user_email=%s err=%v", notification.Email, err)
-	}
 }
 
 func (s *UsageService) invalidateUsageCaches(ctx context.Context, userID int64, balanceUpdated bool) {

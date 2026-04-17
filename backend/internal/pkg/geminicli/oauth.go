@@ -166,34 +166,37 @@ func EffectiveOAuthConfig(cfg OAuthConfig, oauthType string) (OAuthConfig, error
 	if effective.Scopes != "" {
 		effective.Scopes = strings.Join(strings.Fields(strings.ReplaceAll(effective.Scopes, ",", " ")), " ")
 	}
+
+	// Fall back to built-in Gemini CLI OAuth client when not configured.
+	// SECURITY: This repo does not embed the built-in client secret; it must be provided via env.
+	if effective.ClientID == "" && effective.ClientSecret == "" {
+		builtinClientID := strings.TrimSpace(GeminiCLIOAuthClientID)
+		if builtinClientID == "" {
+			if v, ok := os.LookupEnv(GeminiCLIOAuthClientIDEnv); ok {
+				builtinClientID = strings.TrimSpace(v)
+			}
+		}
+		builtinClientSecret := strings.TrimSpace(GeminiCLIOAuthClientSecret)
+		if builtinClientSecret == "" {
+			if v, ok := os.LookupEnv(GeminiCLIOAuthClientSecretEnv); ok {
+				builtinClientSecret = strings.TrimSpace(v)
+			}
+		}
+		if builtinClientID == "" || builtinClientSecret == "" {
+			return OAuthConfig{}, infraerrors.Newf(http.StatusBadRequest, "GEMINI_CLI_OAUTH_CLIENT_NOT_CONFIGURED", "built-in Gemini CLI OAuth client is not configured; set %s and %s or provide a custom OAuth client", GeminiCLIOAuthClientIDEnv, GeminiCLIOAuthClientSecretEnv)
+		}
+		effective.ClientID = builtinClientID
+		effective.ClientSecret = builtinClientSecret
+	} else if effective.ClientID == "" || effective.ClientSecret == "" {
+		return OAuthConfig{}, infraerrors.New(http.StatusBadRequest, "GEMINI_OAUTH_CLIENT_NOT_CONFIGURED", "OAuth client not configured: please set both client_id and client_secret (or leave both empty to use the built-in Gemini CLI client)")
+	}
+
 	builtinClientID := strings.TrimSpace(GeminiCLIOAuthClientID)
 	if builtinClientID == "" {
 		if v, ok := os.LookupEnv(GeminiCLIOAuthClientIDEnv); ok {
 			builtinClientID = strings.TrimSpace(v)
 		}
 	}
-	builtinSecret := strings.TrimSpace(GeminiCLIOAuthClientSecret)
-	if builtinSecret == "" {
-		if v, ok := os.LookupEnv(GeminiCLIOAuthClientSecretEnv); ok {
-			builtinSecret = strings.TrimSpace(v)
-		}
-	}
-
-	// Fall back to built-in Gemini CLI OAuth client when not configured.
-	// SECURITY: This repo does not embed the built-in client secret; it must be provided via env.
-	if effective.ClientID == "" && effective.ClientSecret == "" {
-		if builtinClientID == "" {
-			return OAuthConfig{}, infraerrors.Newf(http.StatusBadRequest, "GEMINI_CLI_OAUTH_CLIENT_ID_MISSING", "built-in Gemini CLI OAuth client_id is not configured; set %s or provide a custom OAuth client", GeminiCLIOAuthClientIDEnv)
-		}
-		if builtinSecret == "" {
-			return OAuthConfig{}, infraerrors.Newf(http.StatusBadRequest, "GEMINI_CLI_OAUTH_CLIENT_SECRET_MISSING", "built-in Gemini CLI OAuth client_secret is not configured; set %s or provide a custom OAuth client", GeminiCLIOAuthClientSecretEnv)
-		}
-		effective.ClientID = builtinClientID
-		effective.ClientSecret = builtinSecret
-	} else if effective.ClientID == "" || effective.ClientSecret == "" {
-		return OAuthConfig{}, infraerrors.New(http.StatusBadRequest, "GEMINI_OAUTH_CLIENT_NOT_CONFIGURED", "OAuth client not configured: please set both client_id and client_secret (or leave both empty to use the built-in Gemini CLI client)")
-	}
-
 	isBuiltinClient := builtinClientID != "" && effective.ClientID == builtinClientID
 
 	if effective.Scopes == "" {

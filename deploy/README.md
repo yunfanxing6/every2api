@@ -1,4 +1,4 @@
-# Sub2API Grok Fork Deployment Files
+# Sub2API Deployment Files
 
 This directory contains files for deploying Sub2API on Linux servers.
 
@@ -16,7 +16,6 @@ This directory contains files for deploying Sub2API on Linux servers.
 | `docker-compose.yml` | Docker Compose configuration (named volumes) |
 | `docker-compose.local.yml` | Docker Compose configuration (local directories, easy migration) |
 | `docker-deploy.sh` | **One-click Docker deployment script (recommended)** |
-| `upgrade-to-grok-fork.sh` | **One-click migration from stock Sub2API to this Grok fork** |
 | `.env.example` | Docker environment variables template |
 | `DOCKER.md` | Docker Hub documentation |
 | `install.sh` | One-click binary installation script |
@@ -36,10 +35,10 @@ Use the automated preparation script for the easiest setup:
 
 ```bash
 # Download and run the preparation script
-curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/docker-deploy.sh | bash
+curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-deploy.sh | bash
 
 # Or download first, then run
-curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/docker-deploy.sh -o docker-deploy.sh
+curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/docker-deploy.sh -o docker-deploy.sh
 chmod +x docker-deploy.sh
 ./docker-deploy.sh
 ```
@@ -72,8 +71,8 @@ If you prefer manual control:
 
 ```bash
 # Clone repository
-git clone https://github.com/yunfanxing6/sub2api-grok.git
-cd sub2api-grok/deploy
+git clone https://github.com/Wei-Shaw/sub2api.git
+cd sub2api/deploy
 
 # Configure environment
 cp .env.example .env
@@ -96,31 +95,6 @@ docker compose -f docker-compose.local.yml logs -f sub2api
 
 # Access Web UI
 # http://localhost:8080
-```
-
-### Upgrade From Stock Sub2API To This Fork
-
-If you already run the official `Sub2API` Docker deployment and want to switch to this Grok fork, use:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/upgrade-to-grok-fork.sh | bash
-```
-
-This script will:
-
-- back up your current deployment files
-- detect your current compose file automatically
-- stop the old stack before switching
-- keep your `.env` and data directories
-- clone `yunfanxing6/sub2api-grok`
-- generate `docker-compose.grok.yml`
-- build the fork locally and start it
-- create a rollback script inside the backup directory
-
-After migration, use:
-
-```bash
-docker compose -f docker-compose.grok.yml logs -f sub2api
 ```
 
 ### Deployment Version Comparison
@@ -338,12 +312,12 @@ Requires your own OAuth client credentials.
 **Step 2: Configure Environment Variables**
 
 ```bash
-GEMINI_OAUTH_CLIENT_ID=your_google_oauth_client_id
-GEMINI_OAUTH_CLIENT_SECRET=your_google_oauth_client_secret
+GEMINI_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
+GEMINI_OAUTH_CLIENT_SECRET=GOCSPX-your-client-secret
 
 # 可选：如需使用 Gemini CLI 内置 OAuth Client（Code Assist / Google One）
 # 安全说明：本仓库不会内置该 client_secret，请在运行环境通过环境变量注入。
-# GEMINI_CLI_OAUTH_CLIENT_SECRET=your_gemini_cli_oauth_client_secret
+# GEMINI_CLI_OAUTH_CLIENT_SECRET=GOCSPX-your-built-in-secret
 ```
 
 **Step 3: Create Account in Admin UI**
@@ -379,12 +353,12 @@ For production servers using systemd.
 ### One-Line Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/Wei-Shaw/sub2api/main/deploy/install.sh | sudo bash
 ```
 
 ### Manual Installation
 
-1. Download the latest release from [GitHub Releases](https://github.com/yunfanxing6/sub2api-grok/releases)
+1. Download the latest release from [GitHub Releases](https://github.com/Wei-Shaw/sub2api/releases)
 2. Extract and copy the binary to `/opt/sub2api/`
 3. Copy `sub2api.service` to `/etc/systemd/system/`
 4. Run:
@@ -467,13 +441,13 @@ If you need to use AI Studio OAuth for Gemini accounts, add the OAuth client cre
 
 2. Add your OAuth credentials in the `[Service]` section (after the existing `Environment=` lines):
    ```ini
-   Environment=GEMINI_OAUTH_CLIENT_ID=your_google_oauth_client_id
-   Environment=GEMINI_OAUTH_CLIENT_SECRET=your_google_oauth_client_secret
+   Environment=GEMINI_OAUTH_CLIENT_ID=your-client-id.apps.googleusercontent.com
+   Environment=GEMINI_OAUTH_CLIENT_SECRET=GOCSPX-your-client-secret
    ```
 
    如需使用“内置 Gemini CLI OAuth Client”（Code Assist / Google One），还需要注入：
    ```ini
-   Environment=GEMINI_CLI_OAUTH_CLIENT_SECRET=your_gemini_cli_oauth_client_secret
+   Environment=GEMINI_CLI_OAUTH_CLIENT_SECRET=GOCSPX-your-built-in-secret
    ```
 
 3. Reload and restart:

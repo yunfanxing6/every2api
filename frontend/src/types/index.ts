@@ -22,6 +22,16 @@ export interface FetchOptions {
   signal?: AbortSignal
 }
 
+// ==================== Notification Types ====================
+
+/** Notification email entry with enable/disable and verification state.
+ *  email="" is a placeholder for the primary email (user's registration email or admin email). */
+export interface NotifyEmailEntry {
+  email: string
+  disabled: boolean
+  verified: boolean
+}
+
 // ==================== User & Auth Types ====================
 
 export interface User {
@@ -33,6 +43,9 @@ export interface User {
   concurrency: number // Allowed concurrent requests
   status: 'active' | 'disabled' // Account status
   allowed_groups: number[] | null // Allowed group IDs (null = all non-exclusive groups)
+  balance_notify_enabled: boolean
+  balance_notify_threshold: number | null
+  balance_notify_extra_emails: NotifyEmailEntry[]
   subscriptions?: UserSubscription[] // User's active subscriptions
   created_at: string
   updated_at: string
@@ -45,9 +58,6 @@ export interface AdminUser extends User {
   group_rates?: Record<number, number>
   // 当前并发数（仅管理员列表接口返回）
   current_concurrency?: number
-  // Sora 存储配额（字节）
-  sora_storage_quota_bytes: number
-  sora_storage_used_bytes: number
 }
 
 export interface LoginRequest {
@@ -107,14 +117,22 @@ export interface PublicSettings {
   doc_url: string
   home_content: string
   hide_ccs_import_button: boolean
+  payment_enabled: boolean
   purchase_subscription_enabled: boolean
   purchase_subscription_url: string
+  table_default_page_size: number
+  table_page_size_options: number[]
   custom_menu_items: CustomMenuItem[]
   custom_endpoints: CustomEndpoint[]
   linuxdo_oauth_enabled: boolean
-  sora_client_enabled: boolean
+  oidc_oauth_enabled: boolean
+  oidc_oauth_provider_name: string
   backend_mode_enabled: boolean
   version: string
+  balance_low_notify_enabled: boolean
+  account_quota_notify_enabled: boolean
+  balance_low_notify_threshold: number
+  balance_low_notify_recharge_url: string
 }
 
 export interface AuthResponse {
@@ -366,9 +384,16 @@ export interface PaginationConfig {
 
 // ==================== API Key & Group Types ====================
 
-export type GroupPlatform = 'anthropic' | 'openai' | 'grok' | 'qwen' | 'gemini' | 'antigravity' | 'sora'
+export type GroupPlatform = 'anthropic' | 'openai' | 'grok' | 'qwen' | 'gemini' | 'antigravity'
 
 export type SubscriptionType = 'standard' | 'subscription'
+
+export interface OpenAIMessagesDispatchModelConfig {
+  opus_mapped_model?: string
+  sonnet_mapped_model?: string
+  haiku_mapped_model?: string
+  exact_model_mappings?: Record<string, string>
+}
 
 export interface Group {
   id: number
@@ -386,31 +411,16 @@ export interface Group {
   image_price_1k: number | null
   image_price_2k: number | null
   image_price_4k: number | null
-  grok_input_price_per_mtok: number | null
-  grok_output_price_per_mtok: number | null
-  grok_image_price_1k: number | null
-  grok_image_price_2k: number | null
-  qwen_input_price_per_mtok: number | null
-  qwen_output_price_per_mtok: number | null
-  qwen_image_price_1k: number | null
-  qwen_image_price_2k: number | null
-  grok_video_price_5s: number | null
-  grok_video_price_10s: number | null
-  grok_video_price_15s: number | null
-  grok_video_high_quality_multiplier: number | null
-  // Sora 按次计费配置
-  sora_image_price_360: number | null
-  sora_image_price_540: number | null
-  sora_video_price_per_request: number | null
-  sora_video_price_per_request_hd: number | null
-  // Sora 存储配额（字节）
-  sora_storage_quota_bytes: number
   // Claude Code 客户端限制
   claude_code_only: boolean
   fallback_group_id: number | null
   fallback_group_id_on_invalid_request: number | null
   // OpenAI Messages 调度开关（用户侧需要此字段判断是否展示 Claude Code 教程）
   allow_messages_dispatch?: boolean
+  default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
+  require_oauth_only: boolean
+  require_privacy_set: boolean
   created_at: string
   updated_at: string
 }
@@ -422,8 +432,6 @@ export interface AdminGroup extends Group {
 
   // MCP XML 协议注入（仅 antigravity 平台使用）
   mcp_xml_inject: boolean
-  // Claude usage 模拟开关（仅 anthropic 平台使用）
-  simulate_claude_max_enabled: boolean
 
   // 支持的模型系列（仅 antigravity 平台使用）
   supported_model_scopes?: string[]
@@ -435,6 +443,7 @@ export interface AdminGroup extends Group {
 
   // OpenAI Messages 调度配置（仅 openai 平台使用）
   default_mapped_model?: string
+  messages_dispatch_model_config?: OpenAIMessagesDispatchModelConfig
 
   // 分组排序
   sort_order: number
@@ -446,7 +455,6 @@ export interface ApiKey {
   key: string
   name: string
   group_id: number | null
-  group_ids: number[]
   status: 'active' | 'inactive' | 'quota_exhausted' | 'expired'
   ip_whitelist: string[]
   ip_blacklist: string[]
@@ -457,7 +465,6 @@ export interface ApiKey {
   created_at: string
   updated_at: string
   group?: Group
-  groups?: Group[]
   rate_limit_5h: number
   rate_limit_1d: number
   rate_limit_7d: number
@@ -475,7 +482,6 @@ export interface ApiKey {
 export interface CreateApiKeyRequest {
   name: string
   group_id?: number | null
-  group_ids?: number[]
   custom_key?: string // Optional custom API Key
   ip_whitelist?: string[]
   ip_blacklist?: string[]
@@ -489,7 +495,6 @@ export interface CreateApiKeyRequest {
 export interface UpdateApiKeyRequest {
   name?: string
   group_id?: number | null
-  group_ids?: number[]
   status?: 'active' | 'inactive'
   ip_whitelist?: string[]
   ip_blacklist?: string[]
@@ -515,29 +520,13 @@ export interface CreateGroupRequest {
   image_price_1k?: number | null
   image_price_2k?: number | null
   image_price_4k?: number | null
-  grok_input_price_per_mtok?: number | null
-  grok_output_price_per_mtok?: number | null
-  grok_image_price_1k?: number | null
-  grok_image_price_2k?: number | null
-  qwen_input_price_per_mtok?: number | null
-  qwen_output_price_per_mtok?: number | null
-  qwen_image_price_1k?: number | null
-  qwen_image_price_2k?: number | null
-  grok_video_price_5s?: number | null
-  grok_video_price_10s?: number | null
-  grok_video_price_15s?: number | null
-  grok_video_high_quality_multiplier?: number | null
-  sora_image_price_360?: number | null
-  sora_image_price_540?: number | null
-  sora_video_price_per_request?: number | null
-  sora_video_price_per_request_hd?: number | null
-  sora_storage_quota_bytes?: number
   claude_code_only?: boolean
   fallback_group_id?: number | null
   fallback_group_id_on_invalid_request?: number | null
   mcp_xml_inject?: boolean
-  simulate_claude_max_enabled?: boolean
   supported_model_scopes?: string[]
+  require_oauth_only?: boolean
+  require_privacy_set?: boolean
   // 从指定分组复制账号
   copy_accounts_from_group_ids?: number[]
 }
@@ -556,35 +545,19 @@ export interface UpdateGroupRequest {
   image_price_1k?: number | null
   image_price_2k?: number | null
   image_price_4k?: number | null
-  grok_input_price_per_mtok?: number | null
-  grok_output_price_per_mtok?: number | null
-  grok_image_price_1k?: number | null
-  grok_image_price_2k?: number | null
-  qwen_input_price_per_mtok?: number | null
-  qwen_output_price_per_mtok?: number | null
-  qwen_image_price_1k?: number | null
-  qwen_image_price_2k?: number | null
-  grok_video_price_5s?: number | null
-  grok_video_price_10s?: number | null
-  grok_video_price_15s?: number | null
-  grok_video_high_quality_multiplier?: number | null
-  sora_image_price_360?: number | null
-  sora_image_price_540?: number | null
-  sora_video_price_per_request?: number | null
-  sora_video_price_per_request_hd?: number | null
-  sora_storage_quota_bytes?: number
   claude_code_only?: boolean
   fallback_group_id?: number | null
   fallback_group_id_on_invalid_request?: number | null
   mcp_xml_inject?: boolean
-  simulate_claude_max_enabled?: boolean
   supported_model_scopes?: string[]
+  require_oauth_only?: boolean
+  require_privacy_set?: boolean
   copy_accounts_from_group_ids?: number[]
 }
 
 // ==================== Account & Proxy Types ====================
 
-export type AccountPlatform = 'anthropic' | 'openai' | 'grok' | 'qwen' | 'gemini' | 'antigravity' | 'sora'
+export type AccountPlatform = 'anthropic' | 'openai' | 'grok' | 'qwen' | 'gemini' | 'antigravity'
 export type AccountType = 'oauth' | 'setup-token' | 'apikey' | 'upstream' | 'bedrock'
 export type OAuthAddMethod = 'oauth' | 'setup-token'
 export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks5h'
@@ -717,6 +690,7 @@ export interface Account {
   // Extra fields including Codex usage and model-level rate limits (Antigravity smart retry)
   extra?: (CodexUsageSnapshot & {
     model_rate_limits?: Record<string, { rate_limited_at: string; rate_limit_reset_at: string }>
+    antigravity_credits_overages?: Record<string, { activated_at: string; active_until: string }>
   } & Record<string, unknown>)
   proxy_id: number | null
   concurrency: number
@@ -774,11 +748,9 @@ export interface Account {
   cache_ttl_override_enabled?: boolean | null
   cache_ttl_override_target?: string | null
 
-  // 客户端亲和调度（仅 Anthropic/Antigravity 平台有效）
-  // 启用后新会话会优先调度到客户端之前使用过的账号
-  client_affinity_enabled?: boolean | null
-  affinity_client_count?: number | null
-  affinity_clients?: string[] | null
+  // 自定义 Base URL 中继转发（仅 Anthropic OAuth/SetupToken 账号有效）
+  custom_base_url_enabled?: boolean | null
+  custom_base_url?: string | null
 
   // API Key 账号配额限制
   quota_limit?: number | null
@@ -1049,7 +1021,6 @@ export interface UsageLog {
   actual_cost: number
   rate_multiplier: number
   billing_type: number
-  billing_mode?: string | null
 
   request_type?: UsageRequestType
   stream: boolean
@@ -1067,6 +1038,9 @@ export interface UsageLog {
   // Cache TTL Override
   cache_ttl_overridden: boolean
 
+  // 计费模式
+  billing_mode?: string | null
+
   created_at: string
 
   user?: User
@@ -1082,9 +1056,16 @@ export interface UsageLogAccountSummary {
 
 export interface AdminUsageLog extends UsageLog {
   upstream_model?: string | null
+  model_mapping_chain?: string | null
 
   // 账号计费倍率（仅管理员可见）
   account_rate_multiplier?: number | null
+  // 自定义定价规则计算的账号统计费用（nil 时使用 total_cost * multiplier）
+  account_stats_cost?: number | null
+
+  // 渠道 ID 和计费等级（仅管理员可见）
+  channel_id?: number | null
+  billing_tier?: string | null
 
   // 用户请求 IP（仅管理员可见）
   ip_address?: string | null
@@ -1180,6 +1161,7 @@ export interface DashboardStats {
   total_tokens: number
   total_cost: number // 累计标准计费
   total_actual_cost: number // 累计实际扣除
+  total_account_cost: number // 累计账号成本
 
   // 今日 Token 使用统计
   today_requests: number
@@ -1190,6 +1172,7 @@ export interface DashboardStats {
   today_tokens: number
   today_cost: number // 今日标准计费
   today_actual_cost: number // 今日实际扣除
+  today_account_cost: number // 今日账号成本
 
   // 系统运行统计
   average_duration_ms: number // 平均响应时间
@@ -1237,6 +1220,7 @@ export interface ModelStat {
   total_tokens: number
   cost: number // 标准计费
   actual_cost: number // 实际扣除
+  account_cost: number // 账号成本
 }
 
 export interface EndpointStat {
@@ -1254,6 +1238,7 @@ export interface GroupStat {
   total_tokens: number
   cost: number // 标准计费
   actual_cost: number // 实际扣除
+  account_cost: number // 账号成本
 }
 
 export interface UserBreakdownItem {
@@ -1263,6 +1248,7 @@ export interface UserBreakdownItem {
   total_tokens: number
   cost: number
   actual_cost: number
+  account_cost: number
 }
 
 export interface UserUsageTrendPoint {
@@ -1398,6 +1384,8 @@ export interface UsageQueryParams {
   billing_type?: number | null
   start_date?: string
   end_date?: string
+  sort_by?: string
+  sort_order?: 'asc' | 'desc'
 }
 
 // ==================== Account Usage Statistics ====================
@@ -1664,3 +1652,6 @@ export interface UpdateScheduledTestPlanRequest {
   max_results?: number
   auto_recover?: boolean
 }
+
+// Payment types
+export type { SubscriptionPlan, PaymentOrder, CheckoutInfoResponse } from './payment'
