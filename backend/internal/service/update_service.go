@@ -22,7 +22,7 @@ import (
 const (
 	updateCacheKey    = "update_check_cache"
 	updateCacheTTL    = 1200 // 20 minutes
-	defaultGitHubRepo = "yunfanxing6/sub2api-grok"
+	defaultGitHubRepo = "yunfanxing6/every2api"
 
 	// Security: allowed download domains for updates
 	allowedDownloadHost = "github.com"

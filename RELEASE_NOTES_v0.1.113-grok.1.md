@@ -9,7 +9,7 @@
 
 - retained multi-group API key routing and same-platform precise group matching
 - restored `grok` / `qwen` / `any2api` integration paths after the upstream sync
-- kept updater defaults pointing to `yunfanxing6/sub2api-grok`
+- kept updater defaults pointing to `yunfanxing6/every2api`
 
 ## Verification
 

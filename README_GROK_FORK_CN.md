@@ -1,15 +1,16 @@
-# Sub2API Grok Fork
+# every2api
 
-这个目录是基于 `sub2api v0.1.113` 整理出的 Grok 融合版工作目录，目标是：
+这是基于 `sub2api v0.1.113` 整理出的 `every2api` 工作目录，目标是：
 
 - 保留 `Sub2API` 原有的用户、API Key、余额、订阅、审计能力
-- 新增独立 `grok` 平台标签
-- 让 `sub2api` 直接对接 `grok2api` 作为 Grok 上游
-- 支持文本、文生图、文生视频和媒体文件代理
+- 保留并增强独立 `grok` / `qwen` / `any2api` 平台路由
+- 让 `every2api` 对接 `any2api` 作为统一上游网关
+- 让 `any2api` 再集成 `grok2api` 和 `qwen2API`
+- 对外继续提供文本、文生图、文生视频和媒体文件代理
 
-## 当前目录
+## 当前状态
 
-- 工作目录：`/home/xingyunfan/sub2api-grok`
+- 仓库名：`every2api`
 - 基线版本：`v0.1.113`
 
 ## 已融合能力
@@ -39,20 +40,26 @@
 
 ## 部署思路
 
-推荐保持两层结构：
+推荐保持三层结构：
 
-1. `sub2api-grok` 对外提供用户 API
-2. `grok2api` 只作为内网/专用上游
+1. `every2api` 对外提供用户 API、用户系统、Key、分组和计费
+2. `any2api` 作为统一 Grok/Qwen 上游网关
+3. `grok2api` 与 `qwen2API` 只作为 `any2api` 内部集成组件
 
 推荐配置：
 
-- `sub2api` 域名：例如 `https://sub.example.com`
-- `grok2api` 域名：例如 `https://grok.example.com`
-- 在 `sub2api` 后台创建：
-  - 平台：`grok`
+- `every2api` 域名：例如 `https://sub.example.com`
+- `any2api` 域名：例如 `https://api.example.com`
+- 在 `every2api` 后台创建：
+  - 平台：`any2api`
   - 账号类型：`apikey`
-  - `base_url`：`https://grok.example.com/v1`
-  - `api_key`：你的 grok2api API Key
+  - `base_url`：`https://api.example.com/v1`
+  - `api_key`：你的 any2api API Key
+
+其中：
+
+- `every2api` 负责对用户暴露 `grok` / `qwen` 模型和计费能力
+- `any2api` 负责把 Grok 请求下发给 `grok2api`，把 Qwen 请求下发给 `qwen2API`
 
 ## 线上验证状态
 
@@ -67,15 +74,15 @@
 
 - `grok-imagine-1.0-edit`
 
-这个问题目前更像 `grok2api` 上游编辑能力适配问题，不是 `sub2api` 集成层的问题。
+这个问题目前更像 `grok2api` 上游编辑能力适配问题，不是 `every2api` 集成层的问题。
 
 ## 开源建议
 
 如果你要把这套代码直接开源，建议：
 
-1. 新建仓库，例如：`sub2api-grok`
+1. 新建仓库，例如：`every2api`
 2. 以这个目录为仓库根目录推送
-3. 在仓库首页说明这不是官方 `sub2api`，而是 Grok 融合分支
+3. 在仓库首页说明这不是官方 `sub2api`，而是面向 Grok / Qwen 的外层网关分支
 4. 明确标注当前已知限制：`images/edits`
 5. 单独维护升级策略：以后以官方 `sub2api` tag 为基线继续前移
 
@@ -85,7 +92,7 @@
 
 这个 fork 的在线更新默认检查：
 
-- `yunfanxing6/sub2api-grok`
+- `yunfanxing6/every2api`
 
 如果你以后换了自己的仓库名，可以通过环境变量覆盖：
 
@@ -96,7 +103,7 @@
 可以使用一键迁移脚本：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy/upgrade-to-grok-fork.sh | bash
+curl -sSL https://raw.githubusercontent.com/yunfanxing6/every2api/main/deploy/upgrade-to-grok-fork.sh | bash
 ```
 
 这个脚本会：

@@ -8,7 +8,7 @@
 ## Grok Fork Compatibility
 
 - preserved first-class `grok` platform support across backend, routing, billing, and admin UI
-- kept fork updater defaults pointing to `yunfanxing6/sub2api-grok`
+- kept fork updater defaults pointing to `yunfanxing6/every2api`
 - retained Grok media routing and file proxy support while aligning OpenAI/Anthropic gateway behavior with upstream `v0.1.110`
 
 ## Gateway Updates

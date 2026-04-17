@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="https://github.com/yunfanxing6/sub2api-grok.git"
-RAW_BASE="https://raw.githubusercontent.com/yunfanxing6/sub2api-grok/main/deploy"
+REPO_URL="https://github.com/yunfanxing6/every2api.git"
+RAW_BASE="https://raw.githubusercontent.com/yunfanxing6/every2api/main/deploy"
 TARGET_DIR="${TARGET_DIR:-$(pwd)}"
-SOURCE_DIR="${SUB2API_FORK_SOURCE_DIR:-${TARGET_DIR}/sub2api-grok-src}"
+SOURCE_DIR="${SUB2API_FORK_SOURCE_DIR:-${TARGET_DIR}/every2api-src}"
 BACKUP_DIR="${TARGET_DIR}/backup-$(date +%Y%m%d-%H%M%S)"
 FORK_REF="${SUB2API_FORK_REF:-main}"
 
@@ -132,7 +132,7 @@ main() {
     cp .env.example.grok .env
   fi
 
-  ensure_env_value SUB2API_RELEASE_REPO yunfanxing6/sub2api-grok
+  ensure_env_value SUB2API_RELEASE_REPO yunfanxing6/every2api
   ensure_env_value JWT_SECRET "$(openssl rand -hex 32)"
   ensure_env_value TOTP_ENCRYPTION_KEY "$(openssl rand -hex 32)"
 
@@ -165,7 +165,7 @@ services:
       args:
         GOPROXY: \\${GOPROXY:-https://goproxy.cn,direct}
         GOSUMDB: \\${GOSUMDB:-sum.golang.google.cn}
-    image: sub2api-grok-local:latest
+    image: every2api-local:latest
     container_name: sub2api
     restart: unless-stopped
     ulimits:

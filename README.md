@@ -1,4 +1,4 @@
-# Sub2API
+# every2api
 
 <div align="center">
 
@@ -10,13 +10,13 @@
 
 <a href="https://trendshift.io/repositories/21823" target="_blank"><img src="https://trendshift.io/api/badge/repositories/21823" alt="Wei-Shaw%2Fsub2api | Trendshift" width="250" height="55"/></a>
 
-**AI API Gateway Platform for Subscription Quota Distribution**
+**Public AI API gateway for Grok and Qwen account aggregation**
 
 English | [中文](README_CN.md) | [日本語](README_JA.md)
 
 </div>
 
-> **Sub2API officially uses only the domains `sub2api.org` and `pincc.ai`. Other websites using the Sub2API name may be third-party deployments or services and are not affiliated with this project. Please verify and exercise your own judgment.**
+> `every2api` is a maintained fork built on top of `Sub2API v0.1.113`. It keeps Sub2API's user, API key, billing, and admin system, then routes Grok and Qwen traffic to `any2api` as the upstream aggregator.
 
 ---
 
@@ -32,7 +32,18 @@ Demo credentials (shared demo environment; **not** created automatically for sel
 
 ## Overview
 
-Sub2API is an AI API gateway platform designed to distribute and manage API quotas from AI product subscriptions. Users can access upstream AI services through platform-generated API Keys, while the platform handles authentication, billing, load balancing, and request forwarding.
+`every2api` is the public-facing gateway in this stack. It is responsible for users, API keys, groups, pricing, balances, routing, and audit/billing, while `any2api` handles Grok and Qwen upstream adaptation.
+
+Recommended integration chain:
+
+- `every2api` -> public gateway and tenant-facing control plane
+- `any2api` -> unified Grok/Qwen upstream gateway used by `every2api`
+- `grok2api` -> Grok upstream inside `any2api`
+- `qwen2API` -> Qwen upstream inside `any2api`
+
+That gives you a layered deployment where the outer gateway stays stable for end users, while the inner adapters can evolve independently.
+
+For this fork, use `https://github.com/yunfanxing6/every2api`. Some sections below still follow upstream `Sub2API` documentation structure, but the fork-specific upstream chain is `every2api -> any2api -> grok2api/qwen2API`.
 
 ## Features
 
@@ -95,12 +106,15 @@ Sub2API is an AI API gateway platform designed to distribute and manage API quot
 
 ## Ecosystem
 
-Community projects that extend or integrate with Sub2API:
+Projects commonly used with `every2api`:
 
 | Project | Description | Features |
 |---------|-------------|----------|
 | ~~[Sub2ApiPay](https://github.com/touwaeriol/sub2apipay)~~ | ~~Self-service payment system~~ | **Now Built-in** — Payment is now integrated into Sub2API, no separate deployment needed. See [Payment Configuration Guide](docs/PAYMENT.md) |
 | [sub2api-mobile](https://github.com/ckken/sub2api-mobile) | Mobile admin console | Cross-platform app (iOS/Android/Web) for user management, account management, monitoring dashboard, and multi-backend switching; built with Expo + React Native |
+| [any2api](https://github.com/yunfanxing6/any2api) | Unified Grok/Qwen upstream gateway | Integrates `grok2api` and embedded `qwen2API`, then exposes a single OpenAI-compatible surface to `every2api` |
+| [grok2api](https://github.com/yunfanxing6/grok2api) | Grok upstream adapter | Handles Grok chat, responses, image, and video adaptation inside `any2api` |
+| [qwen2API](https://github.com/yunfanxing6/qwen2API) | Qwen upstream adapter | Handles Qwen chat, files, images, and model-variant adaptation inside `any2api` |
 
 ## Tech Stack
 
