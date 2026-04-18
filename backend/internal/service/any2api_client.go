@@ -272,6 +272,26 @@ func updateAny2APIUsageFromSSEEvent(event []byte, usage *OpenAIUsage) {
 	updateAny2APIUsageFromSSEPayload(payload.Bytes(), usage)
 }
 
+func nextAny2APISSEEvent(buffer []byte) (event []byte, rest []byte, ok bool) {
+	lfIdx := bytes.Index(buffer, []byte("\n\n"))
+	crlfIdx := bytes.Index(buffer, []byte("\r\n\r\n"))
+
+	idx := -1
+	delimLen := 0
+	switch {
+	case crlfIdx >= 0 && (lfIdx < 0 || crlfIdx < lfIdx):
+		idx = crlfIdx
+		delimLen = len("\r\n\r\n")
+	case lfIdx >= 0:
+		idx = lfIdx
+		delimLen = len("\n\n")
+	default:
+		return nil, buffer, false
+	}
+
+	return bytes.TrimSpace(buffer[:idx]), buffer[idx+delimLen:], true
+}
+
 func (c *Any2APIClient) ProxyRequest(ctx context.Context, ginCtx *gin.Context, method, path string, body []byte) (*Any2APIProxyResult, error) {
 	if !c.Enabled() {
 		return nil, fmt.Errorf("any2api integration is not enabled")
@@ -315,12 +335,11 @@ func (c *Any2APIClient) ProxyRequest(ctx context.Context, ginCtx *gin.Context, m
 			if n > 0 {
 				sseBuf = append(sseBuf, buf[:n]...)
 				for {
-					idx := bytes.Index(sseBuf, []byte("\n\n"))
-					if idx < 0 {
+					event, rest, ok := nextAny2APISSEEvent(sseBuf)
+					if !ok {
 						break
 					}
-					event := bytes.TrimSpace(sseBuf[:idx])
-					sseBuf = sseBuf[idx+2:]
+					sseBuf = rest
 					updateAny2APIUsageFromSSEEvent(event, &result.Usage)
 				}
 				if _, writeErr := ginCtx.Writer.Write(buf[:n]); writeErr != nil {

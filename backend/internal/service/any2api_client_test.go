@@ -80,3 +80,21 @@ func TestAny2APIClientProxyRequest_ParsesChatUsageFromFinalChunk(t *testing.T) {
 	require.Zero(t, result.Usage.CacheReadInputTokens)
 	require.Contains(t, rec.Body.String(), `"usage":{"prompt_tokens":13,"completion_tokens":5,"total_tokens":18}`)
 }
+
+func TestAny2APIClientProxyRequest_ParsesUsageFromCRLFSSE(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "event: response.created\r\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_crlf\"}}\r\n\r\nevent: response.completed\r\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_crlf\",\"usage\":{\"input_tokens\":17,\"output_tokens\":4,\"input_tokens_details\":{\"cached_tokens\":2}}}}\r\n\r\ndata: [DONE]\r\n\r\n")
+	}))
+	defer server.Close()
+
+	client := &Any2APIClient{enabled: true, baseURL: server.URL, apiKey: "test-key"}
+	c, _ := newAny2APIProxyTestContext([]byte(`{"model":"grok-4"}`))
+
+	result, err := client.ProxyRequest(context.Background(), c, http.MethodPost, "/v1/responses", []byte(`{"model":"grok-4"}`))
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Equal(t, 17, result.Usage.InputTokens)
+	require.Equal(t, 4, result.Usage.OutputTokens)
+	require.Equal(t, 2, result.Usage.CacheReadInputTokens)
+}
