@@ -41,29 +41,30 @@ type BillingCache interface {
 	InvalidateAPIKeyRateLimit(ctx context.Context, keyID int64) error
 }
 
-// ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致）。
-// 数值按上游官方计费单位存储；当前展示层未区分币种。
+// ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致，统一按 USD 存储）。
+// 非 USD 官方价格需要在写入此结构前完成换算。
 type ModelPricing struct {
-	InputPricePerToken             float64 // 每token输入价格
-	InputPricePerTokenPriority     float64 // priority service tier 下每token输入价格
-	OutputPricePerToken            float64 // 每token输出价格
-	OutputPricePerTokenPriority    float64 // priority service tier 下每token输出价格
-	CacheCreationPricePerToken     float64 // 缓存创建每token价格
-	CacheReadPricePerToken         float64 // 缓存读取每token价格
-	CacheReadPricePerTokenPriority float64 // priority service tier 下缓存读取每token价格
-	CacheCreation5mPrice           float64 // 5分钟缓存创建每token价格
-	CacheCreation1hPrice           float64 // 1小时缓存创建每token价格
+	InputPricePerToken             float64 // 每token输入价格 (USD)
+	InputPricePerTokenPriority     float64 // priority service tier 下每token输入价格 (USD)
+	OutputPricePerToken            float64 // 每token输出价格 (USD)
+	OutputPricePerTokenPriority    float64 // priority service tier 下每token输出价格 (USD)
+	CacheCreationPricePerToken     float64 // 缓存创建每token价格 (USD)
+	CacheReadPricePerToken         float64 // 缓存读取每token价格 (USD)
+	CacheReadPricePerTokenPriority float64 // priority service tier 下缓存读取每token价格 (USD)
+	CacheCreation5mPrice           float64 // 5分钟缓存创建每token价格 (USD)
+	CacheCreation1hPrice           float64 // 1小时缓存创建每token价格 (USD)
 	SupportsCacheBreakdown         bool    // 是否支持详细的缓存分类
 	LongContextInputThreshold      int     // 超过阈值后按整次会话提升输入价格
 	LongContextInputMultiplier     float64 // 长上下文整次会话输入倍率
 	LongContextOutputMultiplier    float64 // 长上下文整次会话输出倍率
-	ImageOutputPricePerToken       float64 // 图片输出 token 价格
+	ImageOutputPricePerToken       float64 // 图片输出 token 价格 (USD)
 }
 
 const (
 	openAIGPT54LongContextInputThreshold   = 272000
 	openAIGPT54LongContextInputMultiplier  = 2.0
 	openAIGPT54LongContextOutputMultiplier = 1.5
+	qwenFixedCNYPerUSD                     = 7.0
 	qwenExplicitCacheReadRatio             = 0.1
 )
 
@@ -71,6 +72,13 @@ type sessionTierPricing struct {
 	maxInputTokens int
 	inputPrice     float64
 	outputPrice    float64
+}
+
+func qwenCNYPerMillionToUSDPerToken(cnyPerMillion float64) float64 {
+	if cnyPerMillion <= 0 {
+		return 0
+	}
+	return cnyPerMillion / qwenFixedCNYPerUSD / 1_000_000
 }
 
 func normalizeBillingServiceTier(serviceTier string) string {
@@ -140,7 +148,7 @@ func NewBillingService(cfg *config.Config, pricingService *PricingService) *Bill
 }
 
 // initFallbackPricing 初始化硬编码回退价格（当动态价格不可用时使用）。
-// 价格数值沿用上游官方计费单位：OpenAI/xAI 为 USD，DashScope Qwen 为 CNY。
+// 价格数值统一存为 USD；Qwen 官方人民币价格按固定汇率换算。
 func (s *BillingService) initFallbackPricing() {
 	// Claude 4.5 Opus
 	s.fallbackPrices["claude-opus-4.5"] = &ModelPricing{
@@ -302,35 +310,35 @@ func (s *BillingService) initFallbackPricing() {
 	s.fallbackPrices["grok-imagine-image"] = &ModelPricing{}
 	s.fallbackPrices["grok-imagine-image-pro"] = &ModelPricing{}
 
-	// DashScope Qwen official API pricing (China Mainland region, provider-native CNY units).
+	// DashScope Qwen official API pricing (China Mainland region, converted to USD at 7.00 CNY/USD).
 	s.fallbackPrices["qwen3.6-plus"] = &ModelPricing{
-		InputPricePerToken:             2e-6,
-		InputPricePerTokenPriority:     2e-6,
-		OutputPricePerToken:            12e-6,
-		OutputPricePerTokenPriority:    12e-6,
-		CacheCreationPricePerToken:     2e-6,
-		CacheReadPricePerToken:         0.2e-6,
-		CacheReadPricePerTokenPriority: 0.2e-6,
+		InputPricePerToken:             qwenCNYPerMillionToUSDPerToken(2),
+		InputPricePerTokenPriority:     qwenCNYPerMillionToUSDPerToken(2),
+		OutputPricePerToken:            qwenCNYPerMillionToUSDPerToken(12),
+		OutputPricePerTokenPriority:    qwenCNYPerMillionToUSDPerToken(12),
+		CacheCreationPricePerToken:     qwenCNYPerMillionToUSDPerToken(2),
+		CacheReadPricePerToken:         qwenCNYPerMillionToUSDPerToken(0.2),
+		CacheReadPricePerTokenPriority: qwenCNYPerMillionToUSDPerToken(0.2),
 		SupportsCacheBreakdown:         false,
 	}
 	s.fallbackPrices["qwen3.5-plus"] = &ModelPricing{
-		InputPricePerToken:             0.8e-6,
-		InputPricePerTokenPriority:     0.8e-6,
-		OutputPricePerToken:            4.8e-6,
-		OutputPricePerTokenPriority:    4.8e-6,
-		CacheCreationPricePerToken:     0.8e-6,
-		CacheReadPricePerToken:         0.08e-6,
-		CacheReadPricePerTokenPriority: 0.08e-6,
+		InputPricePerToken:             qwenCNYPerMillionToUSDPerToken(0.8),
+		InputPricePerTokenPriority:     qwenCNYPerMillionToUSDPerToken(0.8),
+		OutputPricePerToken:            qwenCNYPerMillionToUSDPerToken(4.8),
+		OutputPricePerTokenPriority:    qwenCNYPerMillionToUSDPerToken(4.8),
+		CacheCreationPricePerToken:     qwenCNYPerMillionToUSDPerToken(0.8),
+		CacheReadPricePerToken:         qwenCNYPerMillionToUSDPerToken(0.08),
+		CacheReadPricePerTokenPriority: qwenCNYPerMillionToUSDPerToken(0.08),
 		SupportsCacheBreakdown:         false,
 	}
 	s.fallbackPrices["qwen3.5-flash"] = &ModelPricing{
-		InputPricePerToken:             0.2e-6,
-		InputPricePerTokenPriority:     0.2e-6,
-		OutputPricePerToken:            2e-6,
-		OutputPricePerTokenPriority:    2e-6,
-		CacheCreationPricePerToken:     0.2e-6,
-		CacheReadPricePerToken:         0.02e-6,
-		CacheReadPricePerTokenPriority: 0.02e-6,
+		InputPricePerToken:             qwenCNYPerMillionToUSDPerToken(0.2),
+		InputPricePerTokenPriority:     qwenCNYPerMillionToUSDPerToken(0.2),
+		OutputPricePerToken:            qwenCNYPerMillionToUSDPerToken(2),
+		OutputPricePerTokenPriority:    qwenCNYPerMillionToUSDPerToken(2),
+		CacheCreationPricePerToken:     qwenCNYPerMillionToUSDPerToken(0.2),
+		CacheReadPricePerToken:         qwenCNYPerMillionToUSDPerToken(0.02),
+		CacheReadPricePerTokenPriority: qwenCNYPerMillionToUSDPerToken(0.02),
 		SupportsCacheBreakdown:         false,
 	}
 }
@@ -462,13 +470,13 @@ func applyQwenTieredPricing(model string, tokens UsageTokens, pricing *ModelPric
 	totalInputTokens := tokens.InputTokens + tokens.CacheReadTokens
 	switch normalized {
 	case "qwen3.6-plus":
-		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 256000, inputPrice: 2e-6, outputPrice: 12e-6}, {maxInputTokens: 0, inputPrice: 8e-6, outputPrice: 48e-6}})
+		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 256000, inputPrice: qwenCNYPerMillionToUSDPerToken(2), outputPrice: qwenCNYPerMillionToUSDPerToken(12)}, {maxInputTokens: 0, inputPrice: qwenCNYPerMillionToUSDPerToken(8), outputPrice: qwenCNYPerMillionToUSDPerToken(48)}})
 		return buildTieredPricing(pricing, tier.inputPrice, tier.outputPrice)
 	case "qwen3.5-plus":
-		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 128000, inputPrice: 0.8e-6, outputPrice: 4.8e-6}, {maxInputTokens: 256000, inputPrice: 2e-6, outputPrice: 12e-6}, {maxInputTokens: 0, inputPrice: 4e-6, outputPrice: 24e-6}})
+		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 128000, inputPrice: qwenCNYPerMillionToUSDPerToken(0.8), outputPrice: qwenCNYPerMillionToUSDPerToken(4.8)}, {maxInputTokens: 256000, inputPrice: qwenCNYPerMillionToUSDPerToken(2), outputPrice: qwenCNYPerMillionToUSDPerToken(12)}, {maxInputTokens: 0, inputPrice: qwenCNYPerMillionToUSDPerToken(4), outputPrice: qwenCNYPerMillionToUSDPerToken(24)}})
 		return buildTieredPricing(pricing, tier.inputPrice, tier.outputPrice)
 	case "qwen3.5-flash":
-		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 128000, inputPrice: 0.2e-6, outputPrice: 2e-6}, {maxInputTokens: 256000, inputPrice: 0.8e-6, outputPrice: 8e-6}, {maxInputTokens: 0, inputPrice: 1.2e-6, outputPrice: 12e-6}})
+		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 128000, inputPrice: qwenCNYPerMillionToUSDPerToken(0.2), outputPrice: qwenCNYPerMillionToUSDPerToken(2)}, {maxInputTokens: 256000, inputPrice: qwenCNYPerMillionToUSDPerToken(0.8), outputPrice: qwenCNYPerMillionToUSDPerToken(8)}, {maxInputTokens: 0, inputPrice: qwenCNYPerMillionToUSDPerToken(1.2), outputPrice: qwenCNYPerMillionToUSDPerToken(12)}})
 		return buildTieredPricing(pricing, tier.inputPrice, tier.outputPrice)
 	default:
 		return pricing
