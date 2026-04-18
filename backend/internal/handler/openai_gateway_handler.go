@@ -128,6 +128,7 @@ func (h *OpenAIGatewayHandler) recordAny2APIProxyUsage(
 		Model:      model,
 		Usage:      proxyResult.Usage,
 		Stream:     proxyResult.Stream,
+		Duration:   proxyResult.Duration,
 		MediaType:  proxyResult.MediaType,
 		ImageCount: proxyResult.ImageCount,
 		ImageSize:  proxyResult.ImageSize,
@@ -136,7 +137,7 @@ func (h *OpenAIGatewayHandler) recordAny2APIProxyUsage(
 	userAgent := c.GetHeader("User-Agent")
 	clientIP := ip.GetClientIP(c)
 	h.submitUsageRecordTask(func(ctx context.Context) {
-		_ = h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
+		if err := h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
 			Result:           forwardResult,
 			APIKey:           apiKey,
 			User:             apiKey.User,
@@ -147,7 +148,15 @@ func (h *OpenAIGatewayHandler) recordAny2APIProxyUsage(
 			UserAgent:        userAgent,
 			IPAddress:        clientIP,
 			APIKeyService:    h.apiKeyService,
-		})
+		}); err != nil {
+			logger.L().With(
+				zap.String("component", "handler.openai_gateway.any2api_proxy"),
+				zap.Int64("user_id", apiKey.User.ID),
+				zap.Int64("api_key_id", apiKey.ID),
+				zap.Any("group_id", apiKey.GroupID),
+				zap.String("model", model),
+			).Error("any2api_proxy.record_usage_failed", zap.Error(err))
+		}
 	})
 }
 

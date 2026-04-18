@@ -4421,9 +4421,10 @@ type OpenAIRecordUsageInput struct {
 func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRecordUsageInput) error {
 	result := input.Result
 
-	// 跳过所有 token 均为零的用量记录——上游未返回 usage 时不应写入数据库
+	// 跳过既没有 token 用量也不是媒体生成的请求——上游未返回 usage 时不应写入数据库
 	if result.Usage.InputTokens == 0 && result.Usage.OutputTokens == 0 &&
-		result.Usage.CacheCreationInputTokens == 0 && result.Usage.CacheReadInputTokens == 0 {
+		result.Usage.CacheCreationInputTokens == 0 && result.Usage.CacheReadInputTokens == 0 &&
+		result.ImageCount == 0 {
 		return nil
 	}
 
@@ -4477,20 +4478,32 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	if result.ServiceTier != nil {
 		serviceTier = strings.TrimSpace(*result.ServiceTier)
 	}
-	if s.resolver != nil && apiKey.Group != nil {
-		gid := apiKey.Group.ID
-		cost, err = s.billingService.CalculateCostUnified(CostInput{
-			Ctx:            ctx,
-			Model:          billingModel,
-			GroupID:        &gid,
-			Tokens:         tokens,
-			RequestCount:   1,
-			RateMultiplier: multiplier,
-			ServiceTier:    serviceTier,
-			Resolver:       s.resolver,
-		})
+	if result.ImageCount > 0 {
+		var groupConfig *ImagePriceConfig
+		if apiKey.Group != nil {
+			groupConfig = &ImagePriceConfig{
+				Price1K: apiKey.Group.ImagePrice1K,
+				Price2K: apiKey.Group.ImagePrice2K,
+				Price4K: apiKey.Group.ImagePrice4K,
+			}
+		}
+		cost = s.billingService.CalculateImageCost(billingModel, result.ImageSize, result.ImageCount, groupConfig, multiplier)
 	} else {
-		cost, err = s.billingService.CalculateCostWithServiceTier(billingModel, tokens, multiplier, serviceTier)
+		if s.resolver != nil && apiKey.Group != nil {
+			gid := apiKey.Group.ID
+			cost, err = s.billingService.CalculateCostUnified(CostInput{
+				Ctx:            ctx,
+				Model:          billingModel,
+				GroupID:        &gid,
+				Tokens:         tokens,
+				RequestCount:   1,
+				RateMultiplier: multiplier,
+				ServiceTier:    serviceTier,
+				Resolver:       s.resolver,
+			})
+		} else {
+			cost, err = s.billingService.CalculateCostWithServiceTier(billingModel, tokens, multiplier, serviceTier)
+		}
 	}
 	if err != nil {
 		cost = &CostBreakdown{ActualCost: 0}
@@ -4531,6 +4544,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 		CacheCreationTokens: result.Usage.CacheCreationInputTokens,
 		CacheReadTokens:     result.Usage.CacheReadInputTokens,
 		ImageOutputTokens:   result.Usage.ImageOutputTokens,
+		ImageCount:          result.ImageCount,
+		ImageSize:           optionalTrimmedStringPtr(result.ImageSize),
+		MediaType:           optionalTrimmedStringPtr(result.MediaType),
 	}
 	if cost != nil {
 		usageLog.InputCost = cost.InputCost
@@ -4555,6 +4571,9 @@ func (s *OpenAIGatewayService) RecordUsage(ctx context.Context, input *OpenAIRec
 	// 设置计费模式
 	if cost != nil && cost.BillingMode != "" {
 		billingMode := cost.BillingMode
+		usageLog.BillingMode = &billingMode
+	} else if result.ImageCount > 0 {
+		billingMode := string(BillingModeImage)
 		usageLog.BillingMode = &billingMode
 	} else {
 		billingMode := string(BillingModeToken)

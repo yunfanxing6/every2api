@@ -28,6 +28,7 @@ type Any2APIProxyResult struct {
 	MediaType  string
 	ImageCount int
 	ImageSize  string
+	Duration   time.Duration
 }
 
 type Any2APITestResult struct {
@@ -251,10 +252,31 @@ func updateAny2APIUsageFromSSEPayload(payload []byte, usage *OpenAIUsage) {
 	}
 }
 
+func updateAny2APIUsageFromSSEEvent(event []byte, usage *OpenAIUsage) {
+	if usage == nil || len(event) == 0 {
+		return
+	}
+	lines := bytes.Split(event, []byte("\n"))
+	payload := bytes.Buffer{}
+	for _, line := range lines {
+		line = bytes.TrimSuffix(line, []byte("\r"))
+		data, ok := extractOpenAISSEDataLine(string(line))
+		if !ok {
+			continue
+		}
+		if payload.Len() > 0 {
+			payload.WriteByte('\n')
+		}
+		payload.WriteString(data)
+	}
+	updateAny2APIUsageFromSSEPayload(payload.Bytes(), usage)
+}
+
 func (c *Any2APIClient) ProxyRequest(ctx context.Context, ginCtx *gin.Context, method, path string, body []byte) (*Any2APIProxyResult, error) {
 	if !c.Enabled() {
 		return nil, fmt.Errorf("any2api integration is not enabled")
 	}
+	startedAt := time.Now()
 	result := &Any2APIProxyResult{}
 	var reader io.Reader
 	if body != nil {
@@ -299,9 +321,7 @@ func (c *Any2APIClient) ProxyRequest(ctx context.Context, ginCtx *gin.Context, m
 					}
 					event := bytes.TrimSpace(sseBuf[:idx])
 					sseBuf = sseBuf[idx+2:]
-					if bytes.HasPrefix(event, []byte("data: ")) {
-						updateAny2APIUsageFromSSEPayload(bytes.TrimSpace(event[6:]), &result.Usage)
-					}
+					updateAny2APIUsageFromSSEEvent(event, &result.Usage)
 				}
 				if _, writeErr := ginCtx.Writer.Write(buf[:n]); writeErr != nil {
 					return nil, writeErr
@@ -315,6 +335,7 @@ func (c *Any2APIClient) ProxyRequest(ctx context.Context, ginCtx *gin.Context, m
 				return nil, readErr
 			}
 		}
+		result.Duration = time.Since(startedAt)
 		return result, nil
 	}
 
@@ -340,6 +361,7 @@ func (c *Any2APIClient) ProxyRequest(ctx context.Context, ginCtx *gin.Context, m
 	if err != nil {
 		return nil, err
 	}
+	result.Duration = time.Since(startedAt)
 	return result, nil
 }
 
