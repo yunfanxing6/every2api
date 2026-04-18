@@ -90,28 +90,6 @@ func NewOpenAIGatewayHandler(
 	}
 }
 
-func any2apiSyntheticAccount(model string) *service.Account {
-	platform := service.PlatformOpenAI
-	name := "any2api-upstream"
-	lowered := strings.ToLower(strings.TrimSpace(model))
-	if strings.HasPrefix(lowered, "grok") {
-		platform = service.PlatformGrok
-		name = "grok2api-upstream"
-	} else if strings.HasPrefix(lowered, "qwen") {
-		platform = service.PlatformQwen
-		name = "qwen2api-upstream"
-	}
-	return &service.Account{
-		ID:          0,
-		Name:        name,
-		Platform:    platform,
-		Type:        service.AccountTypeAPIKey,
-		Concurrency: 1,
-		Schedulable: true,
-		Status:      service.StatusActive,
-	}
-}
-
 func (h *OpenAIGatewayHandler) recordAny2APIProxyUsage(
 	c *gin.Context,
 	apiKey *service.APIKey,
@@ -133,10 +111,20 @@ func (h *OpenAIGatewayHandler) recordAny2APIProxyUsage(
 		ImageCount: proxyResult.ImageCount,
 		ImageSize:  proxyResult.ImageSize,
 	}
-	account := any2apiSyntheticAccount(model)
 	userAgent := c.GetHeader("User-Agent")
 	clientIP := ip.GetClientIP(c)
 	h.submitUsageRecordTask(func(ctx context.Context) {
+		account, err := h.gatewayService.EnsureAny2APIProxyAccount(ctx, model)
+		if err != nil {
+			logger.L().With(
+				zap.String("component", "handler.openai_gateway.any2api_proxy"),
+				zap.Int64("user_id", apiKey.User.ID),
+				zap.Int64("api_key_id", apiKey.ID),
+				zap.Any("group_id", apiKey.GroupID),
+				zap.String("model", model),
+			).Error("any2api_proxy.resolve_usage_account_failed", zap.Error(err))
+			return
+		}
 		if err := h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{
 			Result:           forwardResult,
 			APIKey:           apiKey,
