@@ -188,3 +188,22 @@ func TestParsePricingData_PreservesServiceTierPriorityFields(t *testing.T) {
 	require.InDelta(t, 0.0000005, pricing.CacheReadInputTokenCostPriority, 1e-12)
 	require.True(t, pricing.SupportsServiceTier)
 }
+
+func TestGetModelPricing_NormalizesAny2APIModelAliases(t *testing.T) {
+	qwenPricing := &LiteLLMModelPricing{InputCostPerToken: 2e-6}
+	grokReasoningPricing := &LiteLLMModelPricing{InputCostPerToken: 3e-6}
+	grokAutoPricing := &LiteLLMModelPricing{InputCostPerToken: 4e-6}
+
+	svc := &PricingService{
+		pricingData: map[string]*LiteLLMModelPricing{
+			"qwen3.6-plus":             qwenPricing,
+			"grok-4.20-0309-reasoning": grokReasoningPricing,
+			"grok-4.20-0309":           grokAutoPricing,
+		},
+	}
+
+	require.Same(t, qwenPricing, svc.GetModelPricing("qwen3.6-plus:thinking"))
+	require.Same(t, qwenPricing, svc.GetModelPricing("qwen3.6-plus:auto"))
+	require.Same(t, grokReasoningPricing, svc.GetModelPricing("grok-4.20-0309-reasoning-super"))
+	require.Same(t, grokAutoPricing, svc.GetModelPricing("grok-4.20-0309-heavy"))
+}

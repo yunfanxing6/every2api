@@ -577,15 +577,21 @@ func (s *PricingService) GetModelPricing(modelName string) *LiteLLMModelPricing 
 }
 
 func (s *PricingService) buildModelLookupCandidates(modelLower string) []string {
+	canonical := normalizeAny2APIModelForPricing(modelLower)
 	// Prefer canonical model name first (this also improves billing compatibility with "models/xxx").
 	candidates := []string{
 		normalizeModelNameForPricing(modelLower),
+		normalizeModelNameForPricing(canonical),
 		modelLower,
+		canonical,
 	}
 	candidates = append(candidates,
 		strings.TrimPrefix(modelLower, "models/"),
+		strings.TrimPrefix(canonical, "models/"),
 		lastSegment(modelLower),
+		lastSegment(canonical),
 		lastSegment(strings.TrimPrefix(modelLower, "models/")),
+		lastSegment(strings.TrimPrefix(canonical, "models/")),
 	)
 
 	seen := make(map[string]struct{}, len(candidates))
@@ -626,6 +632,20 @@ func normalizeModelNameForPricing(model string) string {
 
 	model = strings.TrimLeft(model, "/")
 	return model
+}
+
+func normalizeAny2APIModelForPricing(model string) string {
+	model = strings.TrimSpace(strings.ToLower(model))
+	if idx := strings.Index(model, ":"); idx >= 0 {
+		model = strings.TrimSpace(model[:idx])
+	}
+	for _, suffix := range []string{"-super", "-heavy"} {
+		if strings.HasSuffix(model, suffix) {
+			model = strings.TrimSuffix(model, suffix)
+			break
+		}
+	}
+	return strings.TrimSpace(model)
 }
 
 func lastSegment(model string) string {

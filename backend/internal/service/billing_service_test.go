@@ -198,6 +198,75 @@ func TestGetModelPricing_OpenAIGPT54NanoFallback(t *testing.T) {
 	require.Zero(t, pricing.LongContextInputThreshold)
 }
 
+func TestGetModelPricing_Any2APIFallbackAliases(t *testing.T) {
+	svc := newTestBillingService()
+
+	qwenPricing, err := svc.GetModelPricing("qwen3.6-plus:thinking")
+	require.NoError(t, err)
+	require.InDelta(t, 2e-6, qwenPricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 12e-6, qwenPricing.OutputPricePerToken, 1e-12)
+
+	grokPricing, err := svc.GetModelPricing("grok-4.20-0309-reasoning-super")
+	require.NoError(t, err)
+	require.InDelta(t, 2e-6, grokPricing.InputPricePerToken, 1e-12)
+	require.InDelta(t, 6e-6, grokPricing.OutputPricePerToken, 1e-12)
+	require.InDelta(t, 0.2e-6, grokPricing.CacheReadPricePerToken, 1e-12)
+}
+
+func TestCalculateCost_Qwen36PlusUsesPublishedTierPricing(t *testing.T) {
+	svc := newTestBillingService()
+	tokens := UsageTokens{InputTokens: 300000, OutputTokens: 1000, CacheCreationTokens: 500, CacheReadTokens: 1000}
+
+	cost, err := svc.CalculateCost("qwen3.6-plus:thinking", tokens, 1.0)
+	require.NoError(t, err)
+
+	expectedInput := float64(tokens.InputTokens) * 8e-6
+	expectedOutput := float64(tokens.OutputTokens) * 48e-6
+	expectedCacheCreation := float64(tokens.CacheCreationTokens) * 8e-6
+	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.8e-6
+	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
+	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
+	require.InDelta(t, expectedCacheCreation, cost.CacheCreationCost, 1e-10)
+	require.InDelta(t, expectedCacheRead, cost.CacheReadCost, 1e-10)
+	require.InDelta(t, expectedInput+expectedOutput+expectedCacheCreation+expectedCacheRead, cost.ActualCost, 1e-10)
+}
+
+func TestCalculateCost_Qwen35PlusUsesPublishedMiddleTierPricing(t *testing.T) {
+	svc := newTestBillingService()
+	tokens := UsageTokens{InputTokens: 150000, OutputTokens: 600, CacheCreationTokens: 200, CacheReadTokens: 500}
+
+	cost, err := svc.CalculateCost("qwen3.5-plus:auto", tokens, 1.0)
+	require.NoError(t, err)
+
+	expectedInput := float64(tokens.InputTokens) * 2e-6
+	expectedOutput := float64(tokens.OutputTokens) * 12e-6
+	expectedCacheCreation := float64(tokens.CacheCreationTokens) * 2e-6
+	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.2e-6
+	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
+	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
+	require.InDelta(t, expectedCacheCreation, cost.CacheCreationCost, 1e-10)
+	require.InDelta(t, expectedCacheRead, cost.CacheReadCost, 1e-10)
+	require.InDelta(t, expectedInput+expectedOutput+expectedCacheCreation+expectedCacheRead, cost.ActualCost, 1e-10)
+}
+
+func TestCalculateCost_Qwen35FlashUsesPublishedHighTierPricing(t *testing.T) {
+	svc := newTestBillingService()
+	tokens := UsageTokens{InputTokens: 300000, OutputTokens: 800, CacheCreationTokens: 100, CacheReadTokens: 400}
+
+	cost, err := svc.CalculateCost("qwen3.5-flash", tokens, 1.0)
+	require.NoError(t, err)
+
+	expectedInput := float64(tokens.InputTokens) * 1.2e-6
+	expectedOutput := float64(tokens.OutputTokens) * 12e-6
+	expectedCacheCreation := float64(tokens.CacheCreationTokens) * 1.2e-6
+	expectedCacheRead := float64(tokens.CacheReadTokens) * 0.12e-6
+	require.InDelta(t, expectedInput, cost.InputCost, 1e-10)
+	require.InDelta(t, expectedOutput, cost.OutputCost, 1e-10)
+	require.InDelta(t, expectedCacheCreation, cost.CacheCreationCost, 1e-10)
+	require.InDelta(t, expectedCacheRead, cost.CacheReadCost, 1e-10)
+	require.InDelta(t, expectedInput+expectedOutput+expectedCacheCreation+expectedCacheRead, cost.ActualCost, 1e-10)
+}
+
 func TestCalculateCost_OpenAIGPT54LongContextAppliesWholeSessionMultipliers(t *testing.T) {
 	svc := newTestBillingService()
 
@@ -239,6 +308,11 @@ func TestGetFallbackPricing_FamilyMatching(t *testing.T) {
 		{name: "openai gpt5.3 codex", model: "gpt-5.3-codex", expectedInput: 1.5e-6},
 		{name: "openai gpt5.1 codex max alias", model: "gpt-5.1-codex-max", expectedInput: 1.5e-6},
 		{name: "openai codex mini latest alias", model: "codex-mini-latest", expectedInput: 1.5e-6},
+		{name: "grok reasoning super alias", model: "grok-4.20-0309-reasoning-super", expectedInput: 2e-6},
+		{name: "grok non reasoning heavy alias", model: "grok-4.20-0309-non-reasoning-heavy", expectedInput: 2e-6},
+		{name: "qwen 3.6 thinking alias", model: "qwen3.6-plus:thinking", expectedInput: 2e-6},
+		{name: "qwen 3.5 auto alias", model: "qwen3.5-plus:auto", expectedInput: 0.8e-6},
+		{name: "qwen 3.5 flash", model: "qwen3.5-flash", expectedInput: 0.2e-6},
 		{name: "openai unknown no fallback", model: "gpt-unknown-model", expectNilPricing: true},
 		{name: "non supported family", model: "qwen-max", expectNilPricing: true},
 	}
