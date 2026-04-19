@@ -338,6 +338,7 @@ export default {
     usage: 'Usage',
     redeem: 'Redeem',
     profile: 'Profile',
+    configGuide: 'Configuration Guide',
     users: 'Users',
     groups: 'Groups',
     channels: 'Channels',
@@ -846,10 +847,6 @@ export default {
   profile: {
     title: 'Profile Settings',
     description: 'Manage your account information and settings',
-    tabs: {
-      settings: 'Settings',
-      guide: 'Setup Guide'
-    },
     accountBalance: 'Account Balance',
     concurrencyLimit: 'Concurrency Limit',
     memberSince: 'Member Since',
@@ -947,42 +944,50 @@ export default {
     },
     configGuide: {
       title: 'OpenCode Configuration Guide',
-      description: 'The snippets below follow this gateway\'s OpenAI-compatible entrypoint and can be used as a reference for your opencode config.',
-      intro: 'OpenAI, Qwen, and Grok all use the same /v1 endpoint here. The main differences are the provider name, adapter, and default models.',
+      description: 'This standalone page provides copy-ready and AI-ready OpenCode templates for OpenAI, Qwen, and Grok.',
+      intro: 'The templates below are based on the local OpenCode provider structure and adapted to this gateway. OpenAI, Qwen, and Grok all use the same /v1 endpoint here, while the provider name, adapter, and model definitions differ.',
       configPathTitle: 'Config File',
-      configPathDescription: 'Write the config into opencode.jsonc. If you already have providers configured, merge only the snippet you need.',
+      configPathDescription: 'Save the final content into your OpenCode config file. If you already have other providers, merge only the relevant provider nodes instead of overwriting the whole file.',
       endpointTitle: 'Shared Endpoint',
       endpointDescription: 'All three providers use the same base URL and should point to this site\'s /v1 endpoint.',
       apiKeyTitle: 'API Key Placeholder',
       apiKeyDescription: 'Create your own API key from the My Keys page and replace the placeholder in the snippet.',
+      providerKeyTitle: 'Recommended Provider Keys',
+      providerKeyDescription: 'Use the provider keys openai / qwen / grok directly. This makes later AI-assisted edits much less error-prone.',
       stepsTitle: 'Setup Steps',
       steps: {
         openFile: 'Open the OpenCode config file at ~/.config/opencode/opencode.jsonc.',
-        copySnippet: 'Copy the OpenAI, Qwen, or Grok snippet you need, or copy the full example directly.',
+        copySnippet: 'Prefer copying the full template first. Use the single-provider snippets only when you need one platform.',
         replaceKey: 'Replace YOUR_API_KEY with your own API key.',
+        mergeConfig: 'If you already have other providers, ask AI or merge only the provider section instead of deleting your existing config.',
         selectProvider: 'Save the file, then choose the corresponding provider and model in OpenCode.'
       },
+      aiPromptTitle: 'Prompt You Can Send to AI',
+      aiPromptDescription: 'Send the full prompt below to AI together with your request. In most cases it can generate a usable opencode.jsonc directly.',
+      aiPromptCopy: 'Copy Prompt',
+      fullExampleTitle: 'Full opencode.jsonc Template',
+      fullExampleDescription: 'Recommended starting point. It includes OpenAI, Qwen, and Grok together in one config.',
       providers: {
         all: {
-          label: 'Full Example',
-          description: 'Adds OpenAI, Qwen, and Grok together so you can switch providers later without editing again.'
+          label: 'Full Template',
+          description: 'Adds OpenAI, Qwen, and Grok together so you can switch providers later and so AI can merge it more reliably.'
         },
         openai: {
           label: 'OpenAI',
-          description: 'Uses the OpenAI-style provider and is suitable for GPT-family models.'
+          description: 'Uses the built-in OpenAI provider and is suitable for GPT-family models.'
         },
         qwen: {
           label: 'Qwen',
-          description: 'Uses the openai-compatible adapter for Qwen-family models.'
+          description: 'Uses the openai-compatible adapter for Qwen-family models and keeps the common capability fields.'
         },
         grok: {
           label: 'Grok',
-          description: 'Uses the openai-compatible adapter for Grok-family models.'
+          description: 'Uses the openai-compatible adapter for Grok-family models and includes both text and image examples.'
         }
       },
       copy: 'Copy Snippet',
       modelsTitle: 'Example Models',
-      mergedHint: 'If your opencode.jsonc already has a provider section, merge the snippet instead of overwriting your existing providers. Do not commit real API keys to a public repository.'
+      mergedHint: 'If your opencode.jsonc already has a provider section, merge the snippet instead of overwriting your existing providers. Do not commit real API keys to a public repository. When sending this template or prompt to AI, do not paste your real key in plaintext.'
     }
   },
 

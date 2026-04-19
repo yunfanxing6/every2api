@@ -338,6 +338,7 @@ export default {
     usage: '使用记录',
     redeem: '兑换',
     profile: '个人资料',
+    configGuide: '配置说明',
     users: '用户管理',
     groups: '分组管理',
     channels: '渠道管理',
@@ -850,10 +851,6 @@ export default {
   profile: {
     title: '个人设置',
     description: '管理您的账户信息和设置',
-    tabs: {
-      settings: '资料设置',
-      guide: '配置说明'
-    },
     accountBalance: '账户余额',
     concurrencyLimit: '并发限制',
     memberSince: '注册时间',
@@ -951,42 +948,50 @@ export default {
     },
     configGuide: {
       title: 'OpenCode 配置说明',
-      description: '下面的示例按当前网关的 OpenAI 兼容接入方式整理，可直接作为 opencode 配置参考。',
-      intro: 'OpenAI、Qwen、Grok 都通过同一个 /v1 地址接入，差异主要在 provider 名称、适配器和默认模型。',
+      description: '单独页面提供可直接复制、可直接交给 AI 的 OpenCode 配置模板，覆盖 OpenAI、Qwen、Grok 三种接入方式。',
+      intro: '下面的模板参考了本机 OpenCode 的真实 provider 结构，并统一改成当前网关可直接使用的写法。OpenAI、Qwen、Grok 都走同一个 /v1 地址，只是 provider 名称、适配器和模型定义不同。',
       configPathTitle: '配置文件',
-      configPathDescription: '默认把配置写入 opencode.jsonc；如果你已经有 provider 配置，按需合并片段即可。',
+      configPathDescription: '把最终内容保存到 OpenCode 配置文件；如果你已经有其他 provider，请只合并本页示例，不要整文件覆盖。',
       endpointTitle: '统一接入地址',
       endpointDescription: '三个 provider 都使用同一个基础地址，直接保持为当前站点的 /v1 即可。',
       apiKeyTitle: 'API Key 占位符',
       apiKeyDescription: '请在“我的密钥”页面创建你自己的 API Key，并替换示例中的占位符。',
+      providerKeyTitle: '推荐 provider 名称',
+      providerKeyDescription: '建议直接使用 openai / qwen / grok 这三个 provider key，后续让 AI 帮你修改配置时最不容易出错。',
       stepsTitle: '配置步骤',
       steps: {
         openFile: '打开 OpenCode 配置文件 ~/.config/opencode/opencode.jsonc。',
-        copySnippet: '按需复制下面的 OpenAI、Qwen、Grok 片段，或者直接复制完整示例。',
+        copySnippet: '优先复制“完整模板”；如果你只需要单个平台，再复制对应的 OpenAI、Qwen、Grok 片段。',
         replaceKey: '把 YOUR_API_KEY 替换成你自己的 API Key。',
+        mergeConfig: '如果你已有其他 provider，让 AI 或手工只合并 provider 节点，不要删掉原有配置。',
         selectProvider: '保存后在 OpenCode 中选择对应 provider 和模型即可开始使用。'
       },
+      aiPromptTitle: '可直接发给 AI 的提示词',
+      aiPromptDescription: '把下面整段提示词连同你的需求一起发给 AI，通常能直接生成可用的 opencode.jsonc。',
+      aiPromptCopy: '复制提示词',
+      fullExampleTitle: '完整 opencode.jsonc 模板',
+      fullExampleDescription: '推荐直接复制这个完整模板。它已经把 OpenAI、Qwen、Grok 三个 provider 都配好。',
       providers: {
         all: {
-          label: '完整示例',
-          description: '一次性放入 OpenAI、Qwen、Grok 三个 provider，后续可以直接切换。'
+          label: '完整模板',
+          description: '一次性放入 OpenAI、Qwen、Grok 三个 provider，后续可以直接切换，也最适合交给 AI 做合并。'
         },
         openai: {
           label: 'OpenAI',
-          description: '使用 OpenAI 风格 provider，适合 GPT 系列模型。'
+          description: '使用 OpenAI 内置 provider，适合 GPT 系列模型。'
         },
         qwen: {
           label: 'Qwen',
-          description: '使用 openai-compatible 适配器接入 Qwen 系列模型。'
+          description: '使用 openai-compatible 适配器接入 Qwen 系列模型，并补齐常用能力字段。'
         },
         grok: {
           label: 'Grok',
-          description: '使用 openai-compatible 适配器接入 Grok 系列模型。'
+          description: '使用 openai-compatible 适配器接入 Grok 系列模型，并包含文本与生图模型示例。'
         }
       },
       copy: '复制片段',
       modelsTitle: '示例模型',
-      mergedHint: '如果你的 opencode.jsonc 里已经有 provider 节点，请把对应片段合并进去，不要直接覆盖你已有的其他 provider。真实 API Key 也不要上传到公开仓库。'
+      mergedHint: '如果你的 opencode.jsonc 里已经有 provider 节点，请把对应片段合并进去，不要直接覆盖你已有的其他 provider。真实 API Key 不要上传到公开仓库。把本页完整模板或提示词发给 AI 时，也不要把真实 Key 明文贴出去。'
     }
   },
 

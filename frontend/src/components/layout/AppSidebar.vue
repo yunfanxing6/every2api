@@ -459,6 +459,21 @@ const CogIcon = {
     )
 }
 
+const BookOpenIcon = {
+  render: () =>
+    h(
+      'svg',
+      { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor', 'stroke-width': '1.5' },
+      [
+        h('path', {
+          'stroke-linecap': 'round',
+          'stroke-linejoin': 'round',
+          d: 'M12 6.042A8.967 8.967 0 006 4.5A2.25 2.25 0 003.75 6.75v10.5A2.25 2.25 0 006 19.5c2.091 0 4.062.584 5.75 1.604m.25-15.062A8.967 8.967 0 0118 4.5a2.25 2.25 0 012.25 2.25v10.5A2.25 2.25 0 0118 19.5a8.967 8.967 0 00-6 1.604m0-15.062v15.062'
+        })
+      ]
+    )
+}
+
 const SunIcon = {
   render: () =>
     h(
@@ -593,6 +608,7 @@ const userNavItems = computed((): NavItem[] => {
       : []),
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
+    { path: '/config-guide', label: t('nav.configGuide'), icon: BookOpenIcon },
     ...customMenuItemsForUser.value.map((item): NavItem => ({
       path: `/custom/${item.id}`,
       label: item.label,
@@ -631,6 +647,7 @@ const personalNavItems = computed((): NavItem[] => {
       : []),
     { path: '/redeem', label: t('nav.redeem'), icon: GiftIcon, hideInSimpleMode: true },
     { path: '/profile', label: t('nav.profile'), icon: UserIcon },
+    { path: '/config-guide', label: t('nav.configGuide'), icon: BookOpenIcon },
     ...customMenuItemsForUser.value.map((item): NavItem => ({
       path: `/custom/${item.id}`,
       label: item.label,

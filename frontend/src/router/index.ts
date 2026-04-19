@@ -187,6 +187,18 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/config-guide',
+    name: 'ConfigGuide',
+    component: () => import('@/views/user/ConfigGuideView.vue'),
+    meta: {
+      requiresAuth: true,
+      requiresAdmin: false,
+      title: 'Configuration Guide',
+      titleKey: 'profile.configGuide.title',
+      descriptionKey: 'profile.configGuide.description'
+    }
+  },
+  {
     path: '/subscriptions',
     name: 'Subscriptions',
     component: () => import('@/views/user/SubscriptionsView.vue'),
