@@ -846,6 +846,10 @@ export default {
   profile: {
     title: 'Profile Settings',
     description: 'Manage your account information and settings',
+    tabs: {
+      settings: 'Settings',
+      guide: 'Setup Guide'
+    },
     accountBalance: 'Account Balance',
     concurrencyLimit: 'Concurrency Limit',
     memberSince: 'Member Since',
@@ -940,6 +944,45 @@ export default {
       maxEmailsReached: 'Maximum number of notification emails reached',
       unverified: 'Unverified',
       verified: 'Verified',
+    },
+    configGuide: {
+      title: 'OpenCode Configuration Guide',
+      description: 'The snippets below follow this gateway\'s OpenAI-compatible entrypoint and can be used as a reference for your opencode config.',
+      intro: 'OpenAI, Qwen, and Grok all use the same /v1 endpoint here. The main differences are the provider name, adapter, and default models.',
+      configPathTitle: 'Config File',
+      configPathDescription: 'Write the config into opencode.jsonc. If you already have providers configured, merge only the snippet you need.',
+      endpointTitle: 'Shared Endpoint',
+      endpointDescription: 'All three providers use the same base URL and should point to this site\'s /v1 endpoint.',
+      apiKeyTitle: 'API Key Placeholder',
+      apiKeyDescription: 'Create your own API key from the My Keys page and replace the placeholder in the snippet.',
+      stepsTitle: 'Setup Steps',
+      steps: {
+        openFile: 'Open the OpenCode config file at ~/.config/opencode/opencode.jsonc.',
+        copySnippet: 'Copy the OpenAI, Qwen, or Grok snippet you need, or copy the full example directly.',
+        replaceKey: 'Replace YOUR_API_KEY with your own API key.',
+        selectProvider: 'Save the file, then choose the corresponding provider and model in OpenCode.'
+      },
+      providers: {
+        all: {
+          label: 'Full Example',
+          description: 'Adds OpenAI, Qwen, and Grok together so you can switch providers later without editing again.'
+        },
+        openai: {
+          label: 'OpenAI',
+          description: 'Uses the OpenAI-style provider and is suitable for GPT-family models.'
+        },
+        qwen: {
+          label: 'Qwen',
+          description: 'Uses the openai-compatible adapter for Qwen-family models.'
+        },
+        grok: {
+          label: 'Grok',
+          description: 'Uses the openai-compatible adapter for Grok-family models.'
+        }
+      },
+      copy: 'Copy Snippet',
+      modelsTitle: 'Example Models',
+      mergedHint: 'If your opencode.jsonc already has a provider section, merge the snippet instead of overwriting your existing providers. Do not commit real API keys to a public repository.'
     }
   },
 
