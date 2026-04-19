@@ -943,30 +943,69 @@ export default {
       verified: 'Verified',
     },
     configGuide: {
-      title: 'OpenCode Configuration Guide',
-      description: 'This standalone page provides copy-ready and AI-ready OpenCode templates for OpenAI, Qwen, and Grok.',
-      intro: 'The templates below are based on the local OpenCode provider structure and adapted to this gateway. OpenAI, Qwen, and Grok all use the same /v1 endpoint here, while the provider name, adapter, and model definitions differ.',
-      configPathTitle: 'Config File',
-      configPathDescription: 'Save the final content into your OpenCode config file. If you already have other providers, merge only the relevant provider nodes instead of overwriting the whole file.',
+      title: 'Integration Guide',
+      description: 'Covers common client and SDK integrations including OpenCode, Codex CLI, Claude Code, cURL, Python SDK, and JavaScript SDK.',
+      intro: 'Every example on this page uses the same OpenAI-compatible gateway parameters. You only need your own API key, the shared /v1 endpoint, and a valid model name to access OpenAI, Qwen, and Grok.',
       endpointTitle: 'Shared Endpoint',
       endpointDescription: 'All three providers use the same base URL and should point to this site\'s /v1 endpoint.',
+      authHeaderTitle: 'Auth Header',
+      authHeaderDescription: 'Most SDKs, clients, and HTTP tools use Bearer Token authentication.',
       apiKeyTitle: 'API Key Placeholder',
       apiKeyDescription: 'Create your own API key from the My Keys page and replace the placeholder in the snippet.',
-      providerKeyTitle: 'Recommended Provider Keys',
-      providerKeyDescription: 'Use the provider keys openai / qwen / grok directly. This makes later AI-assisted edits much less error-prone.',
+      modelReferenceTitle: 'Common Models',
+      modelReferenceDescription: 'The default examples use gpt-5.4. If you want Qwen or Grok, replace the model field with the corresponding model name.',
       stepsTitle: 'Setup Steps',
       steps: {
-        openFile: 'Open the OpenCode config file at ~/.config/opencode/opencode.jsonc.',
-        copySnippet: 'Prefer copying the full template first. Use the single-provider snippets only when you need one platform.',
-        replaceKey: 'Replace YOUR_API_KEY with your own API key.',
-        mergeConfig: 'If you already have other providers, ask AI or merge only the provider section instead of deleting your existing config.',
-        selectProvider: 'Save the file, then choose the corresponding provider and model in OpenCode.'
+        createKey: 'Create your own API key from the My Keys page first.',
+        chooseClient: 'Choose the client or SDK that you are actually using.',
+        copyExample: 'Copy the config, command, or code example for the selected client.',
+        replaceValues: 'Replace YOUR_API_KEY and, when needed, the model name with your own values.',
+        testRequest: 'Prefer testing once with cURL or a tiny script before wiring it into your real workflow.'
       },
       aiPromptTitle: 'Prompt You Can Send to AI',
-      aiPromptDescription: 'Send the full prompt below to AI together with your request. In most cases it can generate a usable opencode.jsonc directly.',
+      aiPromptDescription: 'Send the full prompt below to AI. In most cases it can generate a complete working config for the selected client.',
       aiPromptCopy: 'Copy Prompt',
-      fullExampleTitle: 'Full opencode.jsonc Template',
-      fullExampleDescription: 'Recommended starting point. It includes OpenAI, Qwen, and Grok together in one config.',
+      promptHeader: 'Please help me configure {client} using the following gateway parameters.',
+      promptReferenceTitle: 'Requirements:',
+      promptRules: {
+        mergeProviders: 'If I already have other config, merge only the current example and do not delete unrelated providers or settings.',
+        keepExactFiles: 'Output the result in the same file format as the example below so I can save it directly.',
+        replaceKey: 'Keep the API key as the placeholder YOUR_API_KEY, or explicitly remind me to replace it with my own key.',
+        outputComplete: 'Output the full content and do not omit fields.',
+        noPseudo: 'Do not return pseudocode or high-level guidance only.'
+      },
+      clients: {
+        opencode: {
+          label: 'OpenCode',
+          description: 'Best for coding-agent workflows that need multiple providers and model switching.',
+          note: 'If you already have an opencode.jsonc file, merge only the providers you need instead of overwriting the whole file.'
+        },
+        codex: {
+          label: 'Codex CLI',
+          description: 'Best for OpenAI Codex CLI by writing ~/.codex/config.toml and ~/.codex/auth.json directly.',
+          note: 'If you switch to Qwen or Grok, update model and review_model in config.toml to the matching model name.'
+        },
+        claude: {
+          label: 'Claude Code',
+          description: 'Use Claude Code through Anthropic-compatible environment variables pointing to this gateway.',
+          note: 'Environment variables are the easiest way to test connectivity first. Persist them in ~/.claude/settings.json after verification.'
+        },
+        curl: {
+          label: 'cURL',
+          description: 'Best for connectivity checks and troubleshooting 401, 404, or invalid model issues.',
+          note: 'If the cURL example works, integrating the same endpoint into other clients is usually straightforward.'
+        },
+        python: {
+          label: 'Python SDK',
+          description: 'Suitable for backend scripts, automation tasks, FastAPI services, and data processing jobs.',
+          note: 'The recommended approach is the official OpenAI SDK with base_url plus api_key.'
+        },
+        javascript: {
+          label: 'JavaScript SDK',
+          description: 'Suitable for Node.js, Next.js, Vercel Functions, and other server-side JavaScript runtimes.',
+          note: 'If you call the API directly from a browser, be careful not to expose a real API key.'
+        }
+      },
       providers: {
         all: {
           label: 'Full Template',
@@ -987,7 +1026,7 @@ export default {
       },
       copy: 'Copy Snippet',
       modelsTitle: 'Example Models',
-      mergedHint: 'If your opencode.jsonc already has a provider section, merge the snippet instead of overwriting your existing providers. Do not commit real API keys to a public repository. When sending this template or prompt to AI, do not paste your real key in plaintext.'
+      mergedHint: 'Regardless of the client, never commit a real API key to a public repository. When sending these templates to AI, prefer placeholder versions instead of pasting production keys in plaintext.'
     }
   },
 

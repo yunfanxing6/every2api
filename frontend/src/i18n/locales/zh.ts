@@ -947,30 +947,69 @@ export default {
       verified: '已验证',
     },
     configGuide: {
-      title: 'OpenCode 配置说明',
-      description: '单独页面提供可直接复制、可直接交给 AI 的 OpenCode 配置模板，覆盖 OpenAI、Qwen、Grok 三种接入方式。',
-      intro: '下面的模板参考了本机 OpenCode 的真实 provider 结构，并统一改成当前网关可直接使用的写法。OpenAI、Qwen、Grok 都走同一个 /v1 地址，只是 provider 名称、适配器和模型定义不同。',
-      configPathTitle: '配置文件',
-      configPathDescription: '把最终内容保存到 OpenCode 配置文件；如果你已经有其他 provider，请只合并本页示例，不要整文件覆盖。',
+      title: '接入配置说明',
+      description: '覆盖 OpenCode、Codex CLI、Claude Code、cURL、Python SDK、JavaScript SDK 等常见接入方式。',
+      intro: '本页所有示例都基于同一套 OpenAI-compatible 接入参数。你只需要准备自己的 API Key、统一的 /v1 地址，以及正确的模型名，就能接入 OpenAI、Qwen、Grok。',
       endpointTitle: '统一接入地址',
       endpointDescription: '三个 provider 都使用同一个基础地址，直接保持为当前站点的 /v1 即可。',
+      authHeaderTitle: '认证请求头',
+      authHeaderDescription: '绝大多数 SDK、客户端和 HTTP 工具都使用 Bearer Token 方式认证。',
       apiKeyTitle: 'API Key 占位符',
       apiKeyDescription: '请在“我的密钥”页面创建你自己的 API Key，并替换示例中的占位符。',
-      providerKeyTitle: '推荐 provider 名称',
-      providerKeyDescription: '建议直接使用 openai / qwen / grok 这三个 provider key，后续让 AI 帮你修改配置时最不容易出错。',
+      modelReferenceTitle: '常用模型名',
+      modelReferenceDescription: '默认示例会使用 gpt-5.4；如果你要接 Qwen 或 Grok，把示例里的 model 改成对应模型名即可。',
       stepsTitle: '配置步骤',
       steps: {
-        openFile: '打开 OpenCode 配置文件 ~/.config/opencode/opencode.jsonc。',
-        copySnippet: '优先复制“完整模板”；如果你只需要单个平台，再复制对应的 OpenAI、Qwen、Grok 片段。',
-        replaceKey: '把 YOUR_API_KEY 替换成你自己的 API Key。',
-        mergeConfig: '如果你已有其他 provider，让 AI 或手工只合并 provider 节点，不要删掉原有配置。',
-        selectProvider: '保存后在 OpenCode 中选择对应 provider 和模型即可开始使用。'
+        createKey: '先到“我的密钥”创建你自己的 API Key。',
+        chooseClient: '选择你当前使用的客户端或 SDK。',
+        copyExample: '复制当前客户端对应的示例配置、命令或代码文件。',
+        replaceValues: '把示例中的 YOUR_API_KEY，以及需要时的模型名替换成你自己的值。',
+        testRequest: '优先用 cURL 或简单脚本做一次连通性测试，确认后再接入正式工作流。'
       },
       aiPromptTitle: '可直接发给 AI 的提示词',
-      aiPromptDescription: '把下面整段提示词连同你的需求一起发给 AI，通常能直接生成可用的 opencode.jsonc。',
+      aiPromptDescription: '把下面整段提示词发给 AI，通常能直接得到当前客户端可用的完整配置。',
       aiPromptCopy: '复制提示词',
-      fullExampleTitle: '完整 opencode.jsonc 模板',
-      fullExampleDescription: '推荐直接复制这个完整模板。它已经把 OpenAI、Qwen、Grok 三个 provider 都配好。',
+      promptHeader: '请帮我配置 {client}，要求使用下面这套网关参数。',
+      promptReferenceTitle: '要求：',
+      promptRules: {
+        mergeProviders: '如果我已有其他配置，请只合并当前示例，不要删除不相关的 provider 或设置。',
+        keepExactFiles: '请按下面的示例文件格式输出，保证我可以直接保存或复制执行。',
+        replaceKey: '保留 API Key 为占位符 YOUR_API_KEY，或明确提醒我替换成自己的 Key。',
+        outputComplete: '输出时给我完整内容，不要省略字段。',
+        noPseudo: '不要只给伪代码，也不要只写高层说明。'
+      },
+      clients: {
+        opencode: {
+          label: 'OpenCode',
+          description: '适合需要多 provider、多模型切换的 Coding Agent 场景。',
+          note: '如果你已经有 opencode.jsonc，请只把本页需要的 provider 合并进去，不要整文件覆盖。'
+        },
+        codex: {
+          label: 'Codex CLI',
+          description: '适合 OpenAI Codex CLI，直接写入 ~/.codex/config.toml 和 ~/.codex/auth.json。',
+          note: '如果你要改用 Qwen 或 Grok，请把 config.toml 里的 model 与 review_model 改成对应模型名。'
+        },
+        claude: {
+          label: 'Claude Code',
+          description: '适合 Claude Code 通过 Anthropic 兼容环境变量接入本网关。',
+          note: '环境变量方式最适合先验证能不能连通；稳定后再写入 ~/.claude/settings.json。'
+        },
+        curl: {
+          label: 'cURL',
+          description: '最适合先做接口连通性测试、排查 401/404/模型名错误等问题。',
+          note: '如果 cURL 能成功，再接入其他客户端通常会更稳。'
+        },
+        python: {
+          label: 'Python SDK',
+          description: '适合后端脚本、自动化任务、FastAPI 或数据处理场景。',
+          note: '建议优先使用 openai 官方 SDK 的 base_url + api_key 方式接入。'
+        },
+        javascript: {
+          label: 'JavaScript SDK',
+          description: '适合 Node.js、Next.js、Vercel Functions 等服务端 JavaScript 场景。',
+          note: '如果你在前端浏览器里直接调用，请注意不要暴露真实 API Key。'
+        }
+      },
       providers: {
         all: {
           label: '完整模板',
@@ -991,7 +1030,7 @@ export default {
       },
       copy: '复制片段',
       modelsTitle: '示例模型',
-      mergedHint: '如果你的 opencode.jsonc 里已经有 provider 节点，请把对应片段合并进去，不要直接覆盖你已有的其他 provider。真实 API Key 不要上传到公开仓库。把本页完整模板或提示词发给 AI 时，也不要把真实 Key 明文贴出去。'
+      mergedHint: '无论你用哪种客户端，都不要把真实 API Key 提交到公开仓库。把本页模板发给 AI 时，也尽量只发占位符版本，不要直接粘贴生产 Key。'
     }
   },
 
