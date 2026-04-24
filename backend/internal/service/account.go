@@ -432,9 +432,6 @@ func (a *Account) resolveModelMapping(rawMapping map[string]any) map[string]stri
 		if a.Platform == domain.PlatformAntigravity {
 			return domain.DefaultAntigravityModelMapping
 		}
-		if a.Platform == domain.PlatformGrok {
-			return domain.DefaultGrokModelMapping
-		}
 		// Bedrock 默认映射由 forwardBedrock 统一处理（需配合 region prefix 调整）
 		return nil
 	}
@@ -442,9 +439,6 @@ func (a *Account) resolveModelMapping(rawMapping map[string]any) map[string]stri
 		// Antigravity 平台使用默认映射
 		if a.Platform == domain.PlatformAntigravity {
 			return domain.DefaultAntigravityModelMapping
-		}
-		if a.Platform == domain.PlatformGrok {
-			return domain.DefaultGrokModelMapping
 		}
 		return nil
 	}
@@ -469,9 +463,6 @@ func (a *Account) resolveModelMapping(rawMapping map[string]any) map[string]stri
 	// Antigravity 平台使用默认映射
 	if a.Platform == domain.PlatformAntigravity {
 		return domain.DefaultAntigravityModelMapping
-	}
-	if a.Platform == domain.PlatformGrok {
-		return domain.DefaultGrokModelMapping
 	}
 	return nil
 }
@@ -939,10 +930,8 @@ func (a *Account) SupportsOpenAIImageCapability(capability OpenAIImagesCapabilit
 		return false
 	}
 	switch capability {
-	case OpenAIImagesCapabilityBasic:
+	case OpenAIImagesCapabilityBasic, OpenAIImagesCapabilityNative:
 		return a.Type == AccountTypeOAuth || a.Type == AccountTypeAPIKey
-	case OpenAIImagesCapabilityNative:
-		return a.Type == AccountTypeAPIKey
 	default:
 		return true
 	}

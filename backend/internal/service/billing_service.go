@@ -41,8 +41,7 @@ type BillingCache interface {
 	InvalidateAPIKeyRateLimit(ctx context.Context, keyID int64) error
 }
 
-// ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致，统一按 USD 存储）。
-// 非 USD 官方价格需要在写入此结构前完成换算。
+// ModelPricing 模型价格配置（per-token价格，与LiteLLM格式一致）
 type ModelPricing struct {
 	InputPricePerToken             float64 // 每token输入价格 (USD)
 	InputPricePerTokenPriority     float64 // priority service tier 下每token输入价格 (USD)
@@ -64,22 +63,7 @@ const (
 	openAIGPT54LongContextInputThreshold   = 272000
 	openAIGPT54LongContextInputMultiplier  = 2.0
 	openAIGPT54LongContextOutputMultiplier = 1.5
-	qwenFixedCNYPerUSD                     = 7.0
-	qwenExplicitCacheReadRatio             = 0.1
 )
-
-type sessionTierPricing struct {
-	maxInputTokens int
-	inputPrice     float64
-	outputPrice    float64
-}
-
-func qwenCNYPerMillionToUSDPerToken(cnyPerMillion float64) float64 {
-	if cnyPerMillion <= 0 {
-		return 0
-	}
-	return cnyPerMillion / qwenFixedCNYPerUSD / 1_000_000
-}
 
 func normalizeBillingServiceTier(serviceTier string) string {
 	return strings.ToLower(strings.TrimSpace(serviceTier))
@@ -147,8 +131,8 @@ func NewBillingService(cfg *config.Config, pricingService *PricingService) *Bill
 	return s
 }
 
-// initFallbackPricing 初始化硬编码回退价格（当动态价格不可用时使用）。
-// 价格数值统一存为 USD；Qwen 官方人民币价格按固定汇率换算。
+// initFallbackPricing 初始化硬编码回退价格（当动态价格不可用时使用）
+// 价格单位：USD per token（与LiteLLM格式一致）
 func (s *BillingService) initFallbackPricing() {
 	// Claude 4.5 Opus
 	s.fallbackPrices["claude-opus-4.5"] = &ModelPricing{
@@ -206,6 +190,7 @@ func (s *BillingService) initFallbackPricing() {
 
 	// Claude 4.6 Opus (与4.5同价)
 	s.fallbackPrices["claude-opus-4.6"] = s.fallbackPrices["claude-opus-4.5"]
+
 	// Claude 4.7 Opus (暂与4.6同价，待官方定价更新)
 	s.fallbackPrices["claude-opus-4.7"] = s.fallbackPrices["claude-opus-4.6"]
 
@@ -232,16 +217,13 @@ func (s *BillingService) initFallbackPricing() {
 		LongContextInputMultiplier:     openAIGPT54LongContextInputMultiplier,
 		LongContextOutputMultiplier:    openAIGPT54LongContextOutputMultiplier,
 	}
+	// GPT-5.5 暂无独立定价，回退到 GPT-5.4
+	s.fallbackPrices["gpt-5.5"] = s.fallbackPrices["gpt-5.4"]
+
 	s.fallbackPrices["gpt-5.4-mini"] = &ModelPricing{
 		InputPricePerToken:     7.5e-7,
 		OutputPricePerToken:    4.5e-6,
 		CacheReadPricePerToken: 7.5e-8,
-		SupportsCacheBreakdown: false,
-	}
-	s.fallbackPrices["gpt-5.4-nano"] = &ModelPricing{
-		InputPricePerToken:     2e-7,
-		OutputPricePerToken:    1.25e-6,
-		CacheReadPricePerToken: 2e-8,
 		SupportsCacheBreakdown: false,
 	}
 	// OpenAI GPT-5.2（本地兜底）
@@ -255,7 +237,7 @@ func (s *BillingService) initFallbackPricing() {
 		CacheReadPricePerTokenPriority: 0.35e-6,
 		SupportsCacheBreakdown:         false,
 	}
-	// Codex 族兜底统一按 GPT-5.1 Codex 价格计费
+	// Codex 族兜底统一按 GPT-5.3 Codex 价格计费
 	s.fallbackPrices["gpt-5.3-codex"] = &ModelPricing{
 		InputPricePerToken:             1.5e-6, // $1.5 per MTok
 		InputPricePerTokenPriority:     3e-6,   // $3 per MTok
@@ -266,90 +248,11 @@ func (s *BillingService) initFallbackPricing() {
 		CacheReadPricePerTokenPriority: 0.3e-6,
 		SupportsCacheBreakdown:         false,
 	}
-	s.fallbackPrices["gpt-5.1-codex"] = &ModelPricing{
-		InputPricePerToken:             1.5e-6,
-		InputPricePerTokenPriority:     3e-6,
-		OutputPricePerToken:            12e-6,
-		OutputPricePerTokenPriority:    24e-6,
-		CacheCreationPricePerToken:     1.5e-6,
-		CacheReadPricePerToken:         0.15e-6,
-		CacheReadPricePerTokenPriority: 0.3e-6,
-		SupportsCacheBreakdown:         false,
-	}
-	s.fallbackPrices["gpt-5.2-codex"] = &ModelPricing{
-		InputPricePerToken:             1.75e-6,
-		InputPricePerTokenPriority:     3.5e-6,
-		OutputPricePerToken:            14e-6,
-		OutputPricePerTokenPriority:    28e-6,
-		CacheCreationPricePerToken:     1.75e-6,
-		CacheReadPricePerToken:         0.175e-6,
-		CacheReadPricePerTokenPriority: 0.35e-6,
-		SupportsCacheBreakdown:         false,
-	}
-	s.fallbackPrices["gpt-5.3-codex"] = s.fallbackPrices["gpt-5.1-codex"]
-
-	// xAI Grok 4.20 (official API pricing)
-	s.fallbackPrices["grok-4.20-0309"] = &ModelPricing{
-		InputPricePerToken:             2e-6,
-		InputPricePerTokenPriority:     2e-6,
-		OutputPricePerToken:            6e-6,
-		OutputPricePerTokenPriority:    6e-6,
-		CacheReadPricePerToken:         0.2e-6,
-		CacheReadPricePerTokenPriority: 0.2e-6,
-		SupportsCacheBreakdown:         false,
-	}
-	s.fallbackPrices["grok-4.20-0309-reasoning"] = s.fallbackPrices["grok-4.20-0309"]
-	s.fallbackPrices["grok-4.20-0309-non-reasoning"] = &ModelPricing{
-		InputPricePerToken:          2e-6,
-		InputPricePerTokenPriority:  2e-6,
-		OutputPricePerToken:         6e-6,
-		OutputPricePerTokenPriority: 6e-6,
-		SupportsCacheBreakdown:      false,
-	}
-
-	// xAI Grok image models with published per-image pricing.
-	s.fallbackPrices["grok-imagine-image"] = &ModelPricing{}
-	s.fallbackPrices["grok-imagine-image-pro"] = &ModelPricing{}
-
-	// DashScope Qwen official API pricing (China Mainland region, converted to USD at 7.00 CNY/USD).
-	s.fallbackPrices["qwen3.6-plus"] = &ModelPricing{
-		InputPricePerToken:             qwenCNYPerMillionToUSDPerToken(2),
-		InputPricePerTokenPriority:     qwenCNYPerMillionToUSDPerToken(2),
-		OutputPricePerToken:            qwenCNYPerMillionToUSDPerToken(12),
-		OutputPricePerTokenPriority:    qwenCNYPerMillionToUSDPerToken(12),
-		CacheCreationPricePerToken:     qwenCNYPerMillionToUSDPerToken(2),
-		CacheReadPricePerToken:         qwenCNYPerMillionToUSDPerToken(0.2),
-		CacheReadPricePerTokenPriority: qwenCNYPerMillionToUSDPerToken(0.2),
-		SupportsCacheBreakdown:         false,
-	}
-	s.fallbackPrices["qwen3.5-plus"] = &ModelPricing{
-		InputPricePerToken:             qwenCNYPerMillionToUSDPerToken(0.8),
-		InputPricePerTokenPriority:     qwenCNYPerMillionToUSDPerToken(0.8),
-		OutputPricePerToken:            qwenCNYPerMillionToUSDPerToken(4.8),
-		OutputPricePerTokenPriority:    qwenCNYPerMillionToUSDPerToken(4.8),
-		CacheCreationPricePerToken:     qwenCNYPerMillionToUSDPerToken(0.8),
-		CacheReadPricePerToken:         qwenCNYPerMillionToUSDPerToken(0.08),
-		CacheReadPricePerTokenPriority: qwenCNYPerMillionToUSDPerToken(0.08),
-		SupportsCacheBreakdown:         false,
-	}
-	s.fallbackPrices["qwen3.5-flash"] = &ModelPricing{
-		InputPricePerToken:             qwenCNYPerMillionToUSDPerToken(0.2),
-		InputPricePerTokenPriority:     qwenCNYPerMillionToUSDPerToken(0.2),
-		OutputPricePerToken:            qwenCNYPerMillionToUSDPerToken(2),
-		OutputPricePerTokenPriority:    qwenCNYPerMillionToUSDPerToken(2),
-		CacheCreationPricePerToken:     qwenCNYPerMillionToUSDPerToken(0.2),
-		CacheReadPricePerToken:         qwenCNYPerMillionToUSDPerToken(0.02),
-		CacheReadPricePerTokenPriority: qwenCNYPerMillionToUSDPerToken(0.02),
-		SupportsCacheBreakdown:         false,
-	}
 }
 
 // getFallbackPricing 根据模型系列获取回退价格
 func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
-	modelLower := normalizeAny2APIModelForPricing(strings.ToLower(model))
-	if pricing, ok := s.fallbackPrices[modelLower]; ok {
-		return pricing
-	}
+	modelLower := strings.ToLower(model)
 
 	// 按模型系列匹配
 	if strings.Contains(modelLower, "opus") {
@@ -383,29 +286,13 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	if strings.Contains(modelLower, "gemini-3.1-pro") || strings.Contains(modelLower, "gemini-3-1-pro") {
 		return s.fallbackPrices["gemini-3.1-pro"]
 	}
-	if strings.HasPrefix(modelLower, "grok-4.20-0309") {
-		if strings.Contains(modelLower, "non-reasoning") {
-			return s.fallbackPrices["grok-4.20-0309-non-reasoning"]
-		}
-		if strings.Contains(modelLower, "reasoning") {
-			return s.fallbackPrices["grok-4.20-0309-reasoning"]
-		}
-		return s.fallbackPrices["grok-4.20-0309"]
-	}
-	if strings.HasPrefix(modelLower, "qwen3.6-plus") {
-		return s.fallbackPrices["qwen3.6-plus"]
-	}
-	if strings.HasPrefix(modelLower, "qwen3.5-plus") {
-		return s.fallbackPrices["qwen3.5-plus"]
-	}
-	if strings.HasPrefix(modelLower, "qwen3.5-flash") {
-		return s.fallbackPrices["qwen3.5-flash"]
-	}
 
 	// OpenAI 仅匹配已知 GPT-5/Codex 族，避免未知 OpenAI 型号误计价。
 	if strings.Contains(modelLower, "gpt-5") || strings.Contains(modelLower, "codex") {
 		normalized := normalizeCodexModel(modelLower)
 		switch normalized {
+		case "gpt-5.5":
+			return s.fallbackPrices["gpt-5.5"]
 		case "gpt-5.4-mini":
 			return s.fallbackPrices["gpt-5.4-mini"]
 		case "gpt-5.4":
@@ -418,65 +305,6 @@ func (s *BillingService) getFallbackPricing(model string) *ModelPricing {
 	}
 
 	return nil
-}
-
-func clonePricing(pricing *ModelPricing) *ModelPricing {
-	if pricing == nil {
-		return nil
-	}
-	cloned := *pricing
-	return &cloned
-}
-
-func buildTieredPricing(pricing *ModelPricing, inputPrice float64, outputPrice float64) *ModelPricing {
-	cloned := clonePricing(pricing)
-	if cloned == nil {
-		return nil
-	}
-	cacheRead := inputPrice * qwenExplicitCacheReadRatio
-	cloned.InputPricePerToken = inputPrice
-	cloned.InputPricePerTokenPriority = inputPrice
-	cloned.OutputPricePerToken = outputPrice
-	cloned.OutputPricePerTokenPriority = outputPrice
-	cloned.CacheCreationPricePerToken = inputPrice
-	cloned.CacheCreation5mPrice = inputPrice
-	cloned.CacheCreation1hPrice = 0
-	cloned.CacheReadPricePerToken = cacheRead
-	cloned.CacheReadPricePerTokenPriority = cacheRead
-	cloned.LongContextInputThreshold = 0
-	cloned.LongContextInputMultiplier = 0
-	cloned.LongContextOutputMultiplier = 0
-	return cloned
-}
-
-func selectSessionTier(totalInputTokens int, tiers []sessionTierPricing) sessionTierPricing {
-	for _, tier := range tiers {
-		if tier.maxInputTokens <= 0 || totalInputTokens <= tier.maxInputTokens {
-			return tier
-		}
-	}
-	return tiers[len(tiers)-1]
-}
-
-func applyQwenTieredPricing(model string, tokens UsageTokens, pricing *ModelPricing) *ModelPricing {
-	if pricing == nil {
-		return nil
-	}
-	normalized := normalizeAny2APIModelForPricing(model)
-	totalInputTokens := tokens.InputTokens + tokens.CacheReadTokens
-	switch normalized {
-	case "qwen3.6-plus":
-		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 256000, inputPrice: qwenCNYPerMillionToUSDPerToken(2), outputPrice: qwenCNYPerMillionToUSDPerToken(12)}, {maxInputTokens: 0, inputPrice: qwenCNYPerMillionToUSDPerToken(8), outputPrice: qwenCNYPerMillionToUSDPerToken(48)}})
-		return buildTieredPricing(pricing, tier.inputPrice, tier.outputPrice)
-	case "qwen3.5-plus":
-		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 128000, inputPrice: qwenCNYPerMillionToUSDPerToken(0.8), outputPrice: qwenCNYPerMillionToUSDPerToken(4.8)}, {maxInputTokens: 256000, inputPrice: qwenCNYPerMillionToUSDPerToken(2), outputPrice: qwenCNYPerMillionToUSDPerToken(12)}, {maxInputTokens: 0, inputPrice: qwenCNYPerMillionToUSDPerToken(4), outputPrice: qwenCNYPerMillionToUSDPerToken(24)}})
-		return buildTieredPricing(pricing, tier.inputPrice, tier.outputPrice)
-	case "qwen3.5-flash":
-		tier := selectSessionTier(totalInputTokens, []sessionTierPricing{{maxInputTokens: 128000, inputPrice: qwenCNYPerMillionToUSDPerToken(0.2), outputPrice: qwenCNYPerMillionToUSDPerToken(2)}, {maxInputTokens: 256000, inputPrice: qwenCNYPerMillionToUSDPerToken(0.8), outputPrice: qwenCNYPerMillionToUSDPerToken(8)}, {maxInputTokens: 0, inputPrice: qwenCNYPerMillionToUSDPerToken(1.2), outputPrice: qwenCNYPerMillionToUSDPerToken(12)}})
-		return buildTieredPricing(pricing, tier.inputPrice, tier.outputPrice)
-	default:
-		return pricing
-	}
 }
 
 // GetModelPricing 获取模型价格配置
@@ -621,7 +449,6 @@ func (s *BillingService) calculateTokenCost(resolved *ResolvedPricing, input Cos
 	}
 
 	pricing = s.applyModelSpecificPricingPolicy(input.Model, pricing)
-	pricing = applyQwenTieredPricing(input.Model, input.Tokens, pricing)
 
 	// 长上下文定价仅在无区间定价时应用（区间定价已包含上下文分层）
 	applyLongCtx := len(resolved.Intervals) == 0
@@ -771,7 +598,6 @@ func (s *BillingService) calculateCostInternal(model string, tokens UsageTokens,
 	}
 
 	// 旧路径始终检查长上下文定价（无区间定价概念）
-	pricing = applyQwenTieredPricing(model, tokens, pricing)
 	return s.computeTokenBreakdown(pricing, tokens, rateMultiplier, serviceTier, true), nil
 }
 
@@ -816,7 +642,8 @@ func isOpenAIGPT54Model(model string) bool {
 	if !strings.Contains(trimmed, "gpt-5") && !strings.Contains(trimmed, "codex") {
 		return false
 	}
-	return normalizeCodexModel(trimmed) == "gpt-5.4"
+	normalized := normalizeCodexModel(trimmed)
+	return normalized == "gpt-5.4" || normalized == "gpt-5.5"
 }
 
 // CalculateCostWithConfig 使用配置中的默认倍率计算费用
@@ -1020,23 +847,13 @@ func (s *BillingService) getImageUnitPrice(model string, imageSize string, group
 
 // getDefaultImagePrice 获取 LiteLLM 默认图片价格
 func (s *BillingService) getDefaultImagePrice(model string, imageSize string) float64 {
-	normalizedModel := normalizeAny2APIModelForPricing(model)
 	basePrice := 0.0
 
 	// 从 PricingService 获取 output_cost_per_image
 	if s.pricingService != nil {
-		pricing := s.pricingService.GetModelPricing(normalizedModel)
+		pricing := s.pricingService.GetModelPricing(model)
 		if pricing != nil && pricing.OutputCostPerImage > 0 {
 			basePrice = pricing.OutputCostPerImage
-		}
-	}
-
-	if basePrice <= 0 {
-		switch normalizedModel {
-		case "grok-imagine-image":
-			basePrice = 0.02
-		case "grok-imagine-image-pro":
-			basePrice = 0.07
 		}
 	}
 

@@ -128,6 +128,21 @@ func TestGetModelPricing_Gpt54NanoUsesDedicatedStaticFallbackWhenRemoteMissing(t
 	require.Zero(t, got.LongContextInputTokenThreshold)
 }
 
+func TestGetModelPricing_ImageModelDoesNotFallbackToTextModel(t *testing.T) {
+	imagePricing := &LiteLLMModelPricing{InputCostPerToken: 3}
+	textPricing := &LiteLLMModelPricing{InputCostPerToken: 9}
+
+	svc := &PricingService{
+		pricingData: map[string]*LiteLLMModelPricing{
+			"gpt-image-2": imagePricing,
+			"gpt-5.4":     textPricing,
+		},
+	}
+
+	got := svc.GetModelPricing("gpt-image-3")
+	require.Same(t, imagePricing, got)
+}
+
 func TestParsePricingData_PreservesPriorityAndServiceTierFields(t *testing.T) {
 	raw := map[string]any{
 		"gpt-5.4": map[string]any{
@@ -187,23 +202,4 @@ func TestParsePricingData_PreservesServiceTierPriorityFields(t *testing.T) {
 	require.InDelta(t, 0.00000025, pricing.CacheReadInputTokenCost, 1e-12)
 	require.InDelta(t, 0.0000005, pricing.CacheReadInputTokenCostPriority, 1e-12)
 	require.True(t, pricing.SupportsServiceTier)
-}
-
-func TestGetModelPricing_NormalizesAny2APIModelAliases(t *testing.T) {
-	qwenPricing := &LiteLLMModelPricing{InputCostPerToken: 2e-6}
-	grokReasoningPricing := &LiteLLMModelPricing{InputCostPerToken: 3e-6}
-	grokAutoPricing := &LiteLLMModelPricing{InputCostPerToken: 4e-6}
-
-	svc := &PricingService{
-		pricingData: map[string]*LiteLLMModelPricing{
-			"qwen3.6-plus":             qwenPricing,
-			"grok-4.20-0309-reasoning": grokReasoningPricing,
-			"grok-4.20-0309":           grokAutoPricing,
-		},
-	}
-
-	require.Same(t, qwenPricing, svc.GetModelPricing("qwen3.6-plus:thinking"))
-	require.Same(t, qwenPricing, svc.GetModelPricing("qwen3.6-plus:auto"))
-	require.Same(t, grokReasoningPricing, svc.GetModelPricing("grok-4.20-0309-reasoning-super"))
-	require.Same(t, grokAutoPricing, svc.GetModelPricing("grok-4.20-0309-heavy"))
 }

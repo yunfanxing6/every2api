@@ -351,7 +351,10 @@ func (h *OpenAIGatewayHandler) handleGrokMediaCreate(
 		defer userReleaseFunc()
 	}
 	if err := h.billingCacheService.CheckBillingEligibility(c.Request.Context(), apiKey.User, apiKey, apiKey.Group, subscription); err != nil {
-		status, code, message := billingErrorDetails(err)
+		status, code, message, retryAfter := billingErrorDetails(err)
+		if retryAfter > 0 {
+			c.Header("Retry-After", strconv.Itoa(retryAfter))
+		}
 		h.handleStreamingAwareError(c, status, code, message, false)
 		return
 	}
@@ -429,12 +432,8 @@ func (h *OpenAIGatewayHandler) handleGrokMediaCreate(
 			Model:         meta.Model,
 			UpstreamModel: upstreamModel,
 			Duration:      proxyResult.Duration,
-			MediaType:     mediaType,
 			ImageCount:    meta.ImageCount,
 			ImageSize:     meta.ImageSize,
-			MediaURL:      mediaURL,
-			VideoSeconds:  meta.VideoSeconds,
-			VideoQuality:  meta.VideoQuality,
 		}
 		h.submitUsageRecordTask(func(ctx context.Context) {
 			_ = h.gatewayService.RecordUsage(ctx, &service.OpenAIRecordUsageInput{

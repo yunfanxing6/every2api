@@ -577,21 +577,15 @@ func (s *PricingService) GetModelPricing(modelName string) *LiteLLMModelPricing 
 }
 
 func (s *PricingService) buildModelLookupCandidates(modelLower string) []string {
-	canonical := normalizeAny2APIModelForPricing(modelLower)
 	// Prefer canonical model name first (this also improves billing compatibility with "models/xxx").
 	candidates := []string{
 		normalizeModelNameForPricing(modelLower),
-		normalizeModelNameForPricing(canonical),
 		modelLower,
-		canonical,
 	}
 	candidates = append(candidates,
 		strings.TrimPrefix(modelLower, "models/"),
-		strings.TrimPrefix(canonical, "models/"),
 		lastSegment(modelLower),
-		lastSegment(canonical),
 		lastSegment(strings.TrimPrefix(modelLower, "models/")),
-		lastSegment(strings.TrimPrefix(canonical, "models/")),
 	)
 
 	seen := make(map[string]struct{}, len(candidates))
@@ -634,20 +628,6 @@ func normalizeModelNameForPricing(model string) string {
 	return model
 }
 
-func normalizeAny2APIModelForPricing(model string) string {
-	model = strings.TrimSpace(strings.ToLower(model))
-	if idx := strings.Index(model, ":"); idx >= 0 {
-		model = strings.TrimSpace(model[:idx])
-	}
-	for _, suffix := range []string{"-super", "-heavy"} {
-		if strings.HasSuffix(model, suffix) {
-			model = strings.TrimSuffix(model, suffix)
-			break
-		}
-	}
-	return strings.TrimSpace(model)
-}
-
 func lastSegment(model string) string {
 	if idx := strings.LastIndex(model, "/"); idx != -1 {
 		return model[idx+1:]
@@ -678,12 +658,14 @@ func (s *PricingService) extractBaseName(model string) string {
 func (s *PricingService) matchByModelFamily(model string) *LiteLLMModelPricing {
 	// modelFamily 定义一个模型系列的匹配和定价查找规则。
 	type modelFamily struct {
-		name    string
-		match   []string
-		pricing []string
+		name    string   // 系列名称
+		match   []string // 用于将模型归类到此系列的模式（strings.Contains 匹配）
+		pricing []string // 用于在定价数据中查找价格的模式（nil 则复用 match；可包含低版本 fallback）
 	}
 
-	// 按特异性降序排列：高版本号在前，避免随机 map 迭代把 4.7 误归到 4.x。
+	// 按特异性降序排列：高版本号在前，避免 "claude-opus-4"（opus-4 系列）
+	// 因子串关系误匹配 "claude-opus-4-7"（opus-4.7 系列）。
+	// 注意：原 map 实现存在 Go map 迭代随机性导致的同类 bug，此处改为有序切片修复。
 	families := []modelFamily{
 		{name: "opus-4.7", match: []string{"claude-opus-4-7", "claude-opus-4.7"}, pricing: []string{"claude-opus-4-7", "claude-opus-4.7", "claude-opus-4-6"}},
 		{name: "opus-4.6", match: []string{"claude-opus-4-6", "claude-opus-4.6"}},
@@ -697,6 +679,7 @@ func (s *PricingService) matchByModelFamily(model string) *LiteLLMModelPricing {
 		{name: "haiku-3", match: []string{"claude-3-haiku"}},
 	}
 
+	// Phase 1: 按有序切片归类（最具体的系列优先匹配）
 	var matched *modelFamily
 	for i := range families {
 		for _, pattern := range families[i].match {
@@ -710,6 +693,7 @@ func (s *PricingService) matchByModelFamily(model string) *LiteLLMModelPricing {
 		}
 	}
 
+	// Phase 2: 二次兜底——当模型 ID 不含已知模式串时，按关键字粗分
 	if matched == nil {
 		var fallbackName string
 		switch {
@@ -755,6 +739,7 @@ func (s *PricingService) matchByModelFamily(model string) *LiteLLMModelPricing {
 		return nil
 	}
 
+	// Phase 3: 在定价数据中查找该系列的价格
 	lookups := matched.pricing
 	if lookups == nil {
 		lookups = matched.match
@@ -809,6 +794,13 @@ func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
 		}
 	}
 
+	// GPT-5.5 回退到 GPT-5.4 定价
+	if strings.HasPrefix(model, "gpt-5.5") {
+		logger.With(zap.String("component", "service.pricing")).
+			Info(fmt.Sprintf("[Pricing] OpenAI fallback matched %s -> %s", model, "gpt-5.4(static)"))
+		return openAIGPT54FallbackPricing
+	}
+
 	if strings.HasPrefix(model, "gpt-5.4-mini") {
 		logger.With(zap.String("component", "service.pricing")).
 			Info(fmt.Sprintf("[Pricing] OpenAI fallback matched %s -> %s", model, "gpt-5.4-mini(static)"))
@@ -825,6 +817,16 @@ func (s *PricingService) matchOpenAIModel(model string) *LiteLLMModelPricing {
 		logger.With(zap.String("component", "service.pricing")).
 			Info(fmt.Sprintf("[Pricing] OpenAI fallback matched %s -> %s", model, "gpt-5.4(static)"))
 		return openAIGPT54FallbackPricing
+	}
+
+	if isOpenAIImageGenerationModel(model) {
+		for _, candidate := range []string{"gpt-image-2", "gpt-image-1.5", "gpt-image-1"} {
+			if pricing, ok := s.pricingData[candidate]; ok {
+				logger.LegacyPrintf("service.pricing", "[Pricing] OpenAI image fallback matched %s -> %s", model, candidate)
+				return pricing
+			}
+		}
+		return nil
 	}
 
 	// 最终回退到 DefaultTestModel
