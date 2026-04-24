@@ -457,6 +457,78 @@ func TestAccountGetModelMapping_AntigravityRespectsWildcardOverride(t *testing.T
 	}
 }
 
+func TestAccountGetModelMapping_OpenAIEnsuresCurrentGPTAliases(t *testing.T) {
+	account := &Account{
+		Platform: PlatformOpenAI,
+		Credentials: map[string]any{
+			"model_mapping": map[string]any{
+				"gpt-5.2": "gpt-5.2",
+				"gpt-5.4": "gpt-5.4",
+			},
+		},
+	}
+
+	mapping := account.GetModelMapping()
+	for _, model := range []string{
+		"gpt-5.2-2025-12-11",
+		"gpt-5.2-chat-latest",
+		"gpt-5.2-pro",
+		"gpt-5.2-pro-2025-12-11",
+		"gpt-5.5",
+		"gpt-5.4-2026-03-05",
+	} {
+		if mapping[model] != model {
+			t.Fatalf("expected %s passthrough to be auto-filled, got: %q", model, mapping[model])
+		}
+	}
+}
+
+func TestAccountGetModelMapping_OpenAIEnsuresAliasesFromVariantSeeds(t *testing.T) {
+	account := &Account{
+		Platform: PlatformOpenAI,
+		Credentials: map[string]any{
+			"model_mapping": map[string]any{
+				"gpt-5.2-pro":        "gpt-5.2-pro",
+				"gpt-5.4-2026-03-05": "gpt-5.4-2026-03-05",
+			},
+		},
+	}
+
+	mapping := account.GetModelMapping()
+	for _, model := range []string{
+		"gpt-5.2-2025-12-11",
+		"gpt-5.2-chat-latest",
+		"gpt-5.2-pro-2025-12-11",
+		"gpt-5.5",
+	} {
+		if mapping[model] != model {
+			t.Fatalf("expected %s passthrough to be auto-filled from variant seed, got: %q", model, mapping[model])
+		}
+	}
+}
+
+func TestAccountGetModelMapping_OpenAIRespectsWildcardOverride(t *testing.T) {
+	account := &Account{
+		Platform: PlatformOpenAI,
+		Credentials: map[string]any{
+			"model_mapping": map[string]any{
+				"gpt-5*": "gpt-5.4",
+			},
+		},
+	}
+
+	mapping := account.GetModelMapping()
+	if _, exists := mapping["gpt-5.5"]; exists {
+		t.Fatalf("did not expect explicit gpt-5.5 passthrough when wildcard already exists")
+	}
+	if _, exists := mapping["gpt-5.2-pro"]; exists {
+		t.Fatalf("did not expect explicit gpt-5.2-pro passthrough when wildcard already exists")
+	}
+	if mapped := account.GetMappedModel("gpt-5.5"); mapped != "gpt-5.4" {
+		t.Fatalf("expected wildcard mapping to stay effective, got: %q", mapped)
+	}
+}
+
 func TestAccountGetModelMapping_CacheInvalidatesOnCredentialsReplace(t *testing.T) {
 	account := &Account{
 		Credentials: map[string]any{

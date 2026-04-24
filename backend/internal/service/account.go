@@ -457,6 +457,9 @@ func (a *Account) resolveModelMapping(rawMapping map[string]any) map[string]stri
 				"gemini-3.1-pro-low",
 			})
 		}
+		if a.Platform == domain.PlatformOpenAI {
+			ensureOpenAIDefaultPassthroughs(result)
+		}
 		return result
 	}
 
@@ -517,6 +520,42 @@ func ensureAntigravityDefaultPassthroughs(mapping map[string]string, models []st
 	for _, model := range models {
 		ensureAntigravityDefaultPassthrough(mapping, model)
 	}
+}
+
+func ensureOpenAIDefaultPassthroughs(mapping map[string]string) {
+	if mapping == nil {
+		return
+	}
+
+	if mappingSupportsRequestedModel(mapping, "gpt-5.2") ||
+		mappingSupportsRequestedModel(mapping, "gpt-5.2-2025-12-11") ||
+		mappingSupportsRequestedModel(mapping, "gpt-5.2-chat-latest") ||
+		mappingSupportsRequestedModel(mapping, "gpt-5.2-pro") ||
+		mappingSupportsRequestedModel(mapping, "gpt-5.2-pro-2025-12-11") {
+		for _, model := range []string{
+			"gpt-5.2-2025-12-11",
+			"gpt-5.2-chat-latest",
+			"gpt-5.2-pro",
+			"gpt-5.2-pro-2025-12-11",
+		} {
+			ensureOpenAIDefaultPassthrough(mapping, model)
+		}
+	}
+
+	if mappingSupportsRequestedModel(mapping, "gpt-5.4") ||
+		mappingSupportsRequestedModel(mapping, "gpt-5.4-mini") ||
+		mappingSupportsRequestedModel(mapping, "gpt-5.4-2026-03-05") {
+		for _, model := range []string{
+			"gpt-5.5",
+			"gpt-5.4-2026-03-05",
+		} {
+			ensureOpenAIDefaultPassthrough(mapping, model)
+		}
+	}
+}
+
+func ensureOpenAIDefaultPassthrough(mapping map[string]string, model string) {
+	ensureAntigravityDefaultPassthrough(mapping, model)
 }
 
 func normalizeRequestedModelForLookup(platform, requestedModel string) string {
