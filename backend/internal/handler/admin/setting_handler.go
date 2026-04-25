@@ -176,6 +176,7 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 		CustomEndpoints:                        dto.ParseCustomEndpoints(settings.CustomEndpoints),
 		DefaultConcurrency:                     settings.DefaultConcurrency,
 		DefaultBalance:                         settings.DefaultBalance,
+		AffiliateRebateRate:                    settings.AffiliateRebateRate,
 		DefaultUserRPMLimit:                    settings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   defaultSubscriptions,
 		EnableModelFallback:                    settings.EnableModelFallback,
@@ -202,37 +203,40 @@ func (h *SettingHandler) GetSettings(c *gin.Context) {
 			TimeoutSeconds:      settings.Any2API.TimeoutSeconds,
 			SyncIntervalSeconds: settings.Any2API.SyncIntervalSeconds,
 		},
-		WebSearchEmulationEnabled:         settings.WebSearchEmulationEnabled,
-		PaymentVisibleMethodAlipaySource:  settings.PaymentVisibleMethodAlipaySource,
-		PaymentVisibleMethodWxpaySource:   settings.PaymentVisibleMethodWxpaySource,
-		PaymentVisibleMethodAlipayEnabled: settings.PaymentVisibleMethodAlipayEnabled,
-		PaymentVisibleMethodWxpayEnabled:  settings.PaymentVisibleMethodWxpayEnabled,
-		OpenAIAdvancedSchedulerEnabled:    settings.OpenAIAdvancedSchedulerEnabled,
-		BalanceLowNotifyEnabled:           settings.BalanceLowNotifyEnabled,
-		BalanceLowNotifyThreshold:         settings.BalanceLowNotifyThreshold,
-		BalanceLowNotifyRechargeURL:       settings.BalanceLowNotifyRechargeURL,
-		AccountQuotaNotifyEnabled:         settings.AccountQuotaNotifyEnabled,
-		AccountQuotaNotifyEmails:          dto.NotifyEmailEntriesFromService(settings.AccountQuotaNotifyEmails),
-		PaymentEnabled:                    paymentCfg.Enabled,
-		PaymentMinAmount:                  paymentCfg.MinAmount,
-		PaymentMaxAmount:                  paymentCfg.MaxAmount,
-		PaymentDailyLimit:                 paymentCfg.DailyLimit,
-		PaymentOrderTimeoutMin:            paymentCfg.OrderTimeoutMin,
-		PaymentMaxPendingOrders:           paymentCfg.MaxPendingOrders,
-		PaymentEnabledTypes:               paymentCfg.EnabledTypes,
-		PaymentBalanceDisabled:            paymentCfg.BalanceDisabled,
-		PaymentBalanceRechargeMultiplier:  paymentCfg.BalanceRechargeMultiplier,
-		PaymentRechargeFeeRate:            paymentCfg.RechargeFeeRate,
-		PaymentLoadBalanceStrat:           paymentCfg.LoadBalanceStrategy,
-		PaymentProductNamePrefix:          paymentCfg.ProductNamePrefix,
-		PaymentProductNameSuffix:          paymentCfg.ProductNameSuffix,
-		PaymentHelpImageURL:               paymentCfg.HelpImageURL,
-		PaymentHelpText:                   paymentCfg.HelpText,
-		PaymentCancelRateLimitEnabled:     paymentCfg.CancelRateLimitEnabled,
-		PaymentCancelRateLimitMax:         paymentCfg.CancelRateLimitMax,
-		PaymentCancelRateLimitWindow:      paymentCfg.CancelRateLimitWindow,
-		PaymentCancelRateLimitUnit:        paymentCfg.CancelRateLimitUnit,
-		PaymentCancelRateLimitMode:        paymentCfg.CancelRateLimitMode,
+		WebSearchEmulationEnabled:            settings.WebSearchEmulationEnabled,
+		PaymentVisibleMethodAlipaySource:     settings.PaymentVisibleMethodAlipaySource,
+		PaymentVisibleMethodWxpaySource:      settings.PaymentVisibleMethodWxpaySource,
+		PaymentVisibleMethodAlipayEnabled:    settings.PaymentVisibleMethodAlipayEnabled,
+		PaymentVisibleMethodWxpayEnabled:     settings.PaymentVisibleMethodWxpayEnabled,
+		OpenAIAdvancedSchedulerEnabled:       settings.OpenAIAdvancedSchedulerEnabled,
+		BalanceLowNotifyEnabled:              settings.BalanceLowNotifyEnabled,
+		BalanceLowNotifyThreshold:            settings.BalanceLowNotifyThreshold,
+		BalanceLowNotifyRechargeURL:          settings.BalanceLowNotifyRechargeURL,
+		AccountQuotaNotifyEnabled:            settings.AccountQuotaNotifyEnabled,
+		AccountQuotaNotifyEmails:             dto.NotifyEmailEntriesFromService(settings.AccountQuotaNotifyEmails),
+		PaymentEnabled:                       paymentCfg.Enabled,
+		PaymentMinAmount:                     paymentCfg.MinAmount,
+		PaymentMaxAmount:                     paymentCfg.MaxAmount,
+		PaymentDailyLimit:                    paymentCfg.DailyLimit,
+		PaymentOrderTimeoutMin:               paymentCfg.OrderTimeoutMin,
+		PaymentMaxPendingOrders:              paymentCfg.MaxPendingOrders,
+		PaymentEnabledTypes:                  paymentCfg.EnabledTypes,
+		PaymentBalanceDisabled:               paymentCfg.BalanceDisabled,
+		PaymentBalanceRechargeMultiplier:     paymentCfg.BalanceRechargeMultiplier,
+		PaymentRechargeFeeRate:               paymentCfg.RechargeFeeRate,
+		PaymentLoadBalanceStrat:              paymentCfg.LoadBalanceStrategy,
+		PaymentProductNamePrefix:             paymentCfg.ProductNamePrefix,
+		PaymentProductNameSuffix:             paymentCfg.ProductNameSuffix,
+		PaymentHelpImageURL:                  paymentCfg.HelpImageURL,
+		PaymentHelpText:                      paymentCfg.HelpText,
+		PaymentCancelRateLimitEnabled:        paymentCfg.CancelRateLimitEnabled,
+		PaymentCancelRateLimitMax:            paymentCfg.CancelRateLimitMax,
+		PaymentCancelRateLimitWindow:         paymentCfg.CancelRateLimitWindow,
+		PaymentCancelRateLimitUnit:           paymentCfg.CancelRateLimitUnit,
+		PaymentCancelRateLimitMode:           paymentCfg.CancelRateLimitMode,
+		ChannelMonitorEnabled:                settings.ChannelMonitorEnabled,
+		ChannelMonitorDefaultIntervalSeconds: settings.ChannelMonitorDefaultIntervalSeconds,
+		AvailableChannelsEnabled:             settings.AvailableChannelsEnabled,
 	}
 	response.Success(c, systemSettingsResponseData(payload, authSourceDefaults))
 }
@@ -338,6 +342,7 @@ type UpdateSettingsRequest struct {
 	// 默认配置
 	DefaultConcurrency                       int                               `json:"default_concurrency"`
 	DefaultBalance                           float64                           `json:"default_balance"`
+	AffiliateRebateRate                      *float64                          `json:"affiliate_rebate_rate"`
 	DefaultUserRPMLimit                      int                               `json:"default_user_rpm_limit"`
 	DefaultSubscriptions                     []dto.DefaultSubscriptionSetting  `json:"default_subscriptions"`
 	AuthSourceDefaultEmailBalance            *float64                          `json:"auth_source_default_email_balance"`
@@ -432,6 +437,13 @@ type UpdateSettingsRequest struct {
 	PaymentCancelRateLimitWindow  *int    `json:"payment_cancel_rate_limit_window"`
 	PaymentCancelRateLimitUnit    *string `json:"payment_cancel_rate_limit_unit"`
 	PaymentCancelRateLimitMode    *string `json:"payment_cancel_rate_limit_window_mode"`
+
+	// Channel Monitor feature switch
+	ChannelMonitorEnabled                *bool `json:"channel_monitor_enabled"`
+	ChannelMonitorDefaultIntervalSeconds *int  `json:"channel_monitor_default_interval_seconds"`
+
+	// Available Channels feature switch (user-facing)
+	AvailableChannelsEnabled *bool `json:"available_channels_enabled"`
 }
 
 // UpdateSettings 更新系统设置
@@ -460,6 +472,16 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 	}
 	if req.DefaultBalance < 0 {
 		req.DefaultBalance = 0
+	}
+	affiliateRebateRate := previousSettings.AffiliateRebateRate
+	if req.AffiliateRebateRate != nil {
+		affiliateRebateRate = *req.AffiliateRebateRate
+	}
+	if affiliateRebateRate < service.AffiliateRebateRateMin {
+		affiliateRebateRate = service.AffiliateRebateRateMin
+	}
+	if affiliateRebateRate > service.AffiliateRebateRateMax {
+		affiliateRebateRate = service.AffiliateRebateRateMax
 	}
 	// 通用表格配置：兼容旧客户端未传字段时保留当前值。
 	if req.TableDefaultPageSize <= 0 {
@@ -1112,6 +1134,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CustomEndpoints:                  customEndpointsJSON,
 		DefaultConcurrency:               req.DefaultConcurrency,
 		DefaultBalance:                   req.DefaultBalance,
+		AffiliateRebateRate:              affiliateRebateRate,
 		DefaultUserRPMLimit:              req.DefaultUserRPMLimit,
 		DefaultSubscriptions:             defaultSubscriptions,
 		EnableModelFallback:              req.EnableModelFallback,
@@ -1226,6 +1249,24 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 				return dto.NotifyEmailEntriesToService(*req.AccountQuotaNotifyEmails)
 			}
 			return previousSettings.AccountQuotaNotifyEmails
+		}(),
+		ChannelMonitorEnabled: func() bool {
+			if req.ChannelMonitorEnabled != nil {
+				return *req.ChannelMonitorEnabled
+			}
+			return previousSettings.ChannelMonitorEnabled
+		}(),
+		ChannelMonitorDefaultIntervalSeconds: func() int {
+			if req.ChannelMonitorDefaultIntervalSeconds != nil {
+				return *req.ChannelMonitorDefaultIntervalSeconds
+			}
+			return previousSettings.ChannelMonitorDefaultIntervalSeconds
+		}(),
+		AvailableChannelsEnabled: func() bool {
+			if req.AvailableChannelsEnabled != nil {
+				return *req.AvailableChannelsEnabled
+			}
+			return previousSettings.AvailableChannelsEnabled
 		}(),
 	}
 
@@ -1408,6 +1449,7 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		CustomEndpoints:                        dto.ParseCustomEndpoints(updatedSettings.CustomEndpoints),
 		DefaultConcurrency:                     updatedSettings.DefaultConcurrency,
 		DefaultBalance:                         updatedSettings.DefaultBalance,
+		AffiliateRebateRate:                    updatedSettings.AffiliateRebateRate,
 		DefaultUserRPMLimit:                    updatedSettings.DefaultUserRPMLimit,
 		DefaultSubscriptions:                   updatedDefaultSubscriptions,
 		EnableModelFallback:                    updatedSettings.EnableModelFallback,
@@ -1458,6 +1500,11 @@ func (h *SettingHandler) UpdateSettings(c *gin.Context) {
 		PaymentCancelRateLimitWindow:           updatedPaymentCfg.CancelRateLimitWindow,
 		PaymentCancelRateLimitUnit:             updatedPaymentCfg.CancelRateLimitUnit,
 		PaymentCancelRateLimitMode:             updatedPaymentCfg.CancelRateLimitMode,
+
+		ChannelMonitorEnabled:                updatedSettings.ChannelMonitorEnabled,
+		ChannelMonitorDefaultIntervalSeconds: updatedSettings.ChannelMonitorDefaultIntervalSeconds,
+
+		AvailableChannelsEnabled: updatedSettings.AvailableChannelsEnabled,
 	}
 	response.Success(c, systemSettingsResponseData(payload, updatedAuthSourceDefaults))
 }
@@ -1708,6 +1755,9 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	if before.DefaultBalance != after.DefaultBalance {
 		changed = append(changed, "default_balance")
 	}
+	if before.AffiliateRebateRate != after.AffiliateRebateRate {
+		changed = append(changed, "affiliate_rebate_rate")
+	}
 	if !equalDefaultSubscriptions(before.DefaultSubscriptions, after.DefaultSubscriptions) {
 		changed = append(changed, "default_subscriptions")
 	}
@@ -1813,6 +1863,15 @@ func diffSettings(before *service.SystemSettings, after *service.SystemSettings,
 	}
 	if !equalNotifyEmailEntries(before.AccountQuotaNotifyEmails, after.AccountQuotaNotifyEmails) {
 		changed = append(changed, "account_quota_notify_emails")
+	}
+	if before.ChannelMonitorEnabled != after.ChannelMonitorEnabled {
+		changed = append(changed, "channel_monitor_enabled")
+	}
+	if before.ChannelMonitorDefaultIntervalSeconds != after.ChannelMonitorDefaultIntervalSeconds {
+		changed = append(changed, "channel_monitor_default_interval_seconds")
+	}
+	if before.AvailableChannelsEnabled != after.AvailableChannelsEnabled {
+		changed = append(changed, "available_channels_enabled")
 	}
 	changed = appendAuthSourceDefaultChanges(changed, beforeAuthSourceDefaults, afterAuthSourceDefaults)
 	return changed

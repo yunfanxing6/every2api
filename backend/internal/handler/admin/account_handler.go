@@ -958,6 +958,7 @@ func (h *AccountHandler) Delete(c *gin.Context) {
 type TestAccountRequest struct {
 	ModelID string `json:"model_id"`
 	Prompt  string `json:"prompt"`
+	Mode    string `json:"mode"`
 }
 
 type SyncFromCRSRequest struct {
@@ -997,7 +998,7 @@ func (h *AccountHandler) Test(c *gin.Context) {
 			return
 		}
 	}
-	if err := h.accountTestService.TestAccountConnection(c, accountID, req.ModelID, req.Prompt); err != nil {
+	if err := h.accountTestService.TestAccountConnection(c, accountID, req.ModelID, req.Prompt, req.Mode); err != nil {
 		// Error already sent via SSE, just log
 		return
 	}

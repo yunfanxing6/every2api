@@ -372,6 +372,7 @@ func (h *OpenAIGatewayHandler) handleGrokMediaCreate(
 			meta.Model,
 			failedAccountIDs,
 			service.OpenAIUpstreamTransportAny,
+			false,
 		)
 		if err != nil {
 			if lastFailoverErr != nil {
@@ -515,6 +516,7 @@ func (h *OpenAIGatewayHandler) ProxyGrokFile(c *gin.Context, mediaType string) {
 		"",
 		nil,
 		service.OpenAIUpstreamTransportAny,
+		false,
 	)
 	if err != nil || selection == nil || selection.Account == nil {
 		h.errorResponse(c, http.StatusServiceUnavailable, "api_error", "No available accounts")
